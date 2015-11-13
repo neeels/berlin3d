@@ -1,8 +1,8 @@
 #!/bin/sh
 # Blattschnittübersicht 2x2 Km:
 # http://fbinter.stadt-berlin.de/fb/index.jsp?loginkey=showAreaSelection&amp;mapId=k_blattschnitt_dgm2@senstadt&amp;areaSelection=address"
-mkdir -p satbild-zips
-cd satbild-zips
+mkdir -p src-zips
+cd src-zips
 wget -c http://fbarc.stadt-berlin.de/FIS_Broker_Atom/DOP/dop20c_2014/dop20_368_5808.ecw.ZIP
 wget -c http://fbarc.stadt-berlin.de/FIS_Broker_Atom/DOP/dop20c_2014/dop20_370_5806.ecw.ZIP
 wget -c http://fbarc.stadt-berlin.de/FIS_Broker_Atom/DOP/dop20c_2014/dop20_370_5808.ecw.ZIP
