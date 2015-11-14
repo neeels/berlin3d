@@ -23,7 +23,7 @@ new-cpp-sections:
 	rm -rf cpp-sections
 	make cpp-sections
 
-cpp-sections:
+cpp-sections: gml-sections
 	./prepare_cpp_sections_makefile.sh
 	make -j $(CPUs) -C cpp-sections
 
@@ -75,7 +75,7 @@ gml11:
 	./section_citygml.py src-citygml/Treptow-Koepenick
 
 
-test_cpp_sections:
+test_cpp_sections: all
 	g++ -std=c++11 -Iinclude -Icpp-sections -o test_cpp_sections test_cpp_sections.cpp cpp-sections/*.o
 
 clean-yes-im-sure:

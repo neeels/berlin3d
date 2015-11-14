@@ -37,7 +37,7 @@ def handle_src_dir(src_dir):
   if not src_dir.endswith('/'):
     src_dir += '/'
 
-  bezirk = os.path.basename(src_dir)
+  bezirk = os.path.basename(src_dir[:-1])
   gml_fname = src_dir + 'citygml.gml'
 
   if not os.path.exists(gml_fname):
