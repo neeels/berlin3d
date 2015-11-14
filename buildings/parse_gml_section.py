@@ -6,10 +6,8 @@ DEFINED_MID = (387690.658211, 5801906.009784, 94.15)
 import sys, os.path
 from xml.sax import saxutils, handler, make_parser
 
-DEST_DIR = 'cpp-sections'
-
 src_section = sys.argv[1]
-name = os.path.basename(src_section)
+name = 's_' + os.path.basename(src_section)
 
 def cross(a, b):
       return [a[1] * b[2] - a[2] * b[1],
@@ -174,10 +172,7 @@ try:
 except Done:
   pass
 
-if not os.path.exists(DEST_DIR):
-  os.makedirs(DEST_DIR)
-
-h = open(os.path.join(DEST_DIR, name + '.h'), 'w')
+h = open(name + '.h', 'w')
 h.write('''#pragma once
 
 #include <city.h>
@@ -193,7 +188,7 @@ extern const char *{0}_images[];
   )
 h.close()
 
-cpp = open(os.path.join(DEST_DIR, name + '.cpp'), 'w')
+cpp = open(name + '.cpp', 'w')
 
 sys.stdout = cpp
 

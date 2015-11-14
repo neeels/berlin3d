@@ -6,7 +6,7 @@ echo
 echo "objs: cpps \\"
 cd gml-sections
 for section in *; do
-  echo " ${section}.o \\"
+  echo " s_${section}.o \\"
 done
 echo
 echo
@@ -20,13 +20,13 @@ echo "cpps: \\"
 
 cd gml-sections
 for section in *; do
-  echo " ${section}.cpp \\"
+  echo " s_${section}.cpp \\"
 done
 echo
 echo
 
 for section in *; do
-  echo "${section}.cpp: ../gml-sections/${section}"
+  echo "s_${section}.cpp: ../gml-sections/${section}"
   echo "\t../parse_gml_section.py ../gml-sections/${section}"
   echo
 done

@@ -15,7 +15,15 @@ src-names:
 	ln -s ../src-citygml/Tempelhof-Schoeneberg/ src-names/tempelhf_schoenebg
 	ln -s ../src-citygml/Treptow-Koepenick/ src-names/treptow_koepenick
 
-.PHONY: new-gml-sections gml-sections
+.PHONY: new-gml-sections gml-sections new-cpp-sections
+
+new-cpp-sections:
+	rm -rf cpp-sections
+	make cpp-sections
+
+cpp-sections:
+	./prepare_cpp_sections_makefile.sh
+	make -j $(CPUs) -C cpp-sections
 
 new-gml-sections:
 	rm -rf gml-sections
