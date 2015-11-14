@@ -15,7 +15,7 @@ one_ecw2jpg() {
   set -e
   test -f "$1"
   make ecw2raw
-  ./ecw2raw "$1"
+	LD_LIBRARY_PATH=./lib ./ecw2raw src-ecw/dop20_404_5810.ecw
   test -f out.rgb
   convert -size 8192x8192 -depth 8 out.rgb -quality 60 "$(target "$1")"
 }
