@@ -1,13 +1,14 @@
 #!/usr/bin/env python
 
 LIMIT_BUILDINGS = None
-DEFINED_MID = (393100.658211, 5818560.009784, 94.150000)
+DEFINED_MID = (387690.658211, 5801906.009784, 94.15)
 
 import sys, os.path
 from xml.sax import saxutils, handler, make_parser
 
 name = sys.argv[1]
-gml_fname = 'berlin/data/' + name + '/citygml.gml';
+src_dir = 'src-names/' + name + '/'
+gml_fname = src_dir + 'citygml.gml';
 
 def cross(a, b):
       return [a[1] * b[2] - a[2] * b[1],
@@ -321,7 +322,7 @@ print 'const double %s_tex_coords[][2] = {' % name
 print ',\n'.join(tex_coords_strs)
 print '};'
 
-images_strs=['"%s"'%s for s in images]
+images_strs=['"%s%s"'%(src_dir, s) for s in images]
 print 'const char *%s_images[] = {' % name
 print ',\n'.join(images_strs)
 print '};'
