@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-import sys, os, os.path
+import sys, os, os.path, time
+import filelock
 
 # For benefit of speed, this parses for a very specific formatting of XML found
 # in these particular datasets.
@@ -20,49 +21,66 @@ def midpoint(floats_lists):
   n = float(len(floats_lists))
   return tuple([sum(v)/n for v in zip(*floats_lists)])
 
-def store(mid, tags):
+
+
+def store(src_dir, mid, content):
+  content = content.replace('imageURI>appearance',
+                            'imageURI>%sappearance' % src_dir)
   fn = '%s/%s' % (DEST_DIR, section_str(mid))
-  f = open(fn, 'a')
-  f.write(tags)
-  f.close()
+  with FileLock(fn):
+    f = open(fn, 'a')
+    f.write(content)
+    f.close()
 
-name = sys.argv[1]
-src_dir = 'src-names/' + name + '/'
-gml_fname = src_dir + 'citygml.gml';
 
-if os.path.exists(DEST_DIR):
-  print 'Adding to %s' % DEST_DIR
-else:
-  print 'Creating %s' % DEST_DIR
-  os.makedirs(DEST_DIR)
+def handle_src_dir(src_dir):
+  if not src_dir.endswith('/'):
+    src_dir += '/'
 
-member_str = None
-member_lower_corner = None
-member_lower_upper = None
+  gml_fname = src_dir + 'citygml.gml';
 
-for line in open(gml_fname):
-  if line.endswith('\r\n'):
-    line = line[:-2] + '\n'
-  if line.startswith(' <cityObjectMember>'):
-    member_str = [ line ]
+  if not os.path.exists(gml_fname):
+    print "Invalid source:", gml_fname
+    exit(1)
 
-  # spaces match only the bldg:Building/gml:boundedBy/gml:Envelope/gml:{lower,upper}Corner
-  elif line.startswith('     <gml:lowerCorner>'):
-    member_lower_corner = line[22:-19]
-  elif line.startswith('     <gml:upperCorner>'):
-    member_upper_corner = line[22:-19]
+  if not os.path.exists(DEST_DIR):
+    os.makedirs(DEST_DIR)
 
-  elif line.startswith(' </cityObjectMember>'):
-    member_str.append(line)
-    store(midpoint((parse_floats(member_lower_corner),
-                    parse_floats(member_upper_corner))),
-          ''.join(member_str))
-    member_str = None
-    member_lower_corner = None
-    member_lower_upper = None
+  print gml_fname, '-->', DEST_DIR
 
-  elif member_str is not None:
-    member_str.append(line)
-    
+  member_str = None
+  member_lower_corner = None
+  member_lower_upper = None
+
+  for line in open(gml_fname):
+    if line.endswith('\r\n'):
+      line = line[:-2] + '\n'
+    if line.startswith(' <cityObjectMember>'):
+      member_str = [ line ]
+
+    # spaces match only the bldg:Building/gml:boundedBy/gml:Envelope/gml:{lower,upper}Corner
+    elif line.startswith('     <gml:lowerCorner>'):
+      member_lower_corner = line[22:-19]
+    elif line.startswith('     <gml:upperCorner>'):
+      member_upper_corner = line[22:-19]
+
+    elif line.startswith(' </cityObjectMember>'):
+      member_str.append(line)
+
+      store(src_dir,
+            midpoint((parse_floats(member_lower_corner),
+                      parse_floats(member_upper_corner))),
+            ''.join(member_str))
+
+      member_str = None
+      member_lower_corner = None
+      member_lower_upper = None
+
+    elif member_str is not None:
+      member_str.append(line)
+      
+
+for src_dir in sys.argv[1:]:
+  handle_src_dir(src_dir)
 
 #vim: expandtab nocin ai
