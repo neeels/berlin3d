@@ -99,6 +99,7 @@ class CityGml(handler.ContentHandler):
         
     def startElement(self, name, attrs):
       self.depth += 1
+      print '%d <%s> %d %d' % (self.state, name, self.depth, self.building_depth)
       self.contents = ''
       if name == 'bldg:Building':
         self.building_depth = self.depth
@@ -124,6 +125,7 @@ class CityGml(handler.ContentHandler):
 
 
     def endElement(self, name):
+      print '</%s>' % name
       if self.building and name == 'gml:posList':
         self.building.walls.append((self.ring_id, parse_floats(self.contents, 0)))
 
@@ -172,8 +174,10 @@ try:
 except Done:
   pass
 
+if not os.path.exists(DEST_DIR):
+  os.makedirs(DEST_DIR)
 
-h = open(name + '.h', 'w')
+h = open(os.path.join(DEST_DIR, name + '.h'), 'w')
 h.write('''#pragma once
 
 #include <city.h>
@@ -189,7 +193,7 @@ extern const char *{0}_images[];
   )
 h.close()
 
-cpp = open(name + '.cpp', 'w')
+cpp = open(os.path.join(DEST_DIR, name + '.cpp'), 'w')
 
 sys.stdout = cpp
 
@@ -323,7 +327,7 @@ print 'const double %s_tex_coords[][2] = {' % name
 print ',\n'.join(tex_coords_strs)
 print '};'
 
-images_strs=['"%s%s"'%(src_dir, s) for s in images]
+images_strs=['"%s"'%(s) for s in images]
 print 'const char *%s_images[] = {' % name
 print ',\n'.join(images_strs)
 print '};'

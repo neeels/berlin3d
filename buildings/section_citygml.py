@@ -56,17 +56,12 @@ def handle_src_dir(src_dir):
   for line in open(gml_fname):
     if line.endswith('\r\n'):
       line = line[:-2] + '\n'
-    if line.startswith(' <cityObjectMember>'):
-      member_str = [ line ]
 
-    # spaces match only the bldg:Building/gml:boundedBy/gml:Envelope/gml:{lower,upper}Corner
-    elif line.startswith('     <gml:lowerCorner>'):
-      member_lower_corner = line[22:-19]
-    elif line.startswith('     <gml:upperCorner>'):
-      member_upper_corner = line[22:-19]
+    if line.startswith(' <cityObjectMember>'):
+      member_str = [ '<cityObjectMember bezirk="%s">' % bezirk ]
+      continue
 
     elif line.startswith(' </cityObjectMember>'):
-      member_str.append('<bezirk name="%s"/>' % bezirk)
       member_str.append(line)
 
       store(src_dir,
@@ -77,8 +72,17 @@ def handle_src_dir(src_dir):
       member_str = None
       member_lower_corner = None
       member_lower_upper = None
+      exit(0)
+      continue
 
-    elif member_str is not None:
+
+    # spaces match only the bldg:Building/gml:boundedBy/gml:Envelope/gml:{lower,upper}Corner
+    if line.startswith('     <gml:lowerCorner>'):
+      member_lower_corner = line[22:-19]
+    elif line.startswith('     <gml:upperCorner>'):
+      member_upper_corner = line[22:-19]
+
+    if member_str is not None:
       member_str.append(line)
       
 
