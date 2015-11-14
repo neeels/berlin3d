@@ -4,6 +4,8 @@ int H = 500;//1200;
 #include <stdlib.h>
 #include <time.h>
 
+#include <all_sections.h>
+
 #define DRAW_SPHERES 0
 #if DRAW_SPHERES
 #include <GL/glut.h>
@@ -13,7 +15,7 @@ int H = 500;//1200;
 #define Pi(V) printf(#V "=%d\n", (int)V)
 
 #include "draw.h"
-#include "audio.h"
+//#include "audio.h"
 
 static AsQuads as_quads;
 static AsLines as_lines;
@@ -788,12 +790,14 @@ class Ufo : public Visible {
       double dens = max(.05, min(10., sqrt(mass.m / v))) * frandom(.9, 1.1);
       double l = scale.len();
 
+			/*
       Mix *m = new Mix();
       m->add(new Sine(dens*100./max(.01,scale.x/l), vol, frandom()*2.*M_PI));
       m->add(new Sine(dens*100./max(.01,scale.y/l), vol, frandom()*2.*M_PI));
       m->add(new Sine(dens*100./max(.01,scale.z/l), vol, frandom()*2.*M_PI));
 
-      Audio.play(new Envelope(max(.01,.02/dens), max(.01,.03/dens), max(.01,1./dens), m));
+      //Audio.play(new Envelope(max(.01,.02/dens), max(.01,.03/dens), max(.01,1./dens), m));
+			*/
     }
 };
 
@@ -2635,27 +2639,10 @@ class Berlin : public Game {
     }
 };
 
-#include "xberg.h"
-#if 0
-#include "mitte.h"
-#include "thofsberg.h"
-#include "neuk.h"
-#include "cburgwdorf.h"
-#include "pankow.h"
-#include "mzahnhdorf.h"
-#endif
 
 void Berlin::populate()
 {
-  add(xberg);
-#if 0
-  add(mitte);
-  add(thofsberg);
-  add(neuk);
-  add(cburgwdorf);
-  add(pankow);
-  add(mzahnhdorf);
-#endif
+
 }
 
 class Games {
@@ -2714,7 +2701,7 @@ class Games {
 
 };
 
-char *audio_path = NULL;
+//char *audio_path = NULL;
 
 SDL_Surface *screen = NULL;
 
@@ -2733,12 +2720,12 @@ int main(int argc, char *argv[])
 
   int c;
 
-  const char *audio_out_path = NULL;
+  //const char *audio_out_path = NULL;
 
   ip.random_seed = time(NULL);
 
   while (1) {
-    c = getopt(argc, argv, "hf:g:r:A:");
+    c = getopt(argc, argv, "hf:g:r:"); //A:");
     if (c == -1)
       break;
    
@@ -2771,9 +2758,9 @@ int main(int argc, char *argv[])
         ip.random_seed = atoi(optarg);
         break;
 
-      case 'A':
-        audio_out_path = optarg;
-        break;
+      //case 'A':
+      //  audio_out_path = optarg;
+      //  break;
 
       case '?':
         error = true;
@@ -2804,7 +2791,7 @@ int main(int argc, char *argv[])
 "           may slew if your system cannot calculate fast enough.\n"
 "           If zero, run as fast as possible. Default is %.1f.\n"
 "  -r seed  Supply a random seed to start off with.\n"
-"  -A file  Write raw audio data to file.\n"
+//"  -A file  Write raw audio data to file.\n"
 , W, H, want_fps
 );
     if (error)
@@ -2813,15 +2800,17 @@ int main(int argc, char *argv[])
   }
 
 
+	/*
   if (audio_out_path) {
-    /*
+#if 0
     if (access(out_stream_path, F_OK) == 0) {
       fprintf(stderr, "file exists, will not overwrite: %s\n", out_stream_path);
       exit(1);
     }
-    */
+#endif
     Audio.write_to(audio_out_path);
   }
+	*/
 
   const int maxpixels = 1e4;
 
@@ -2878,7 +2867,7 @@ int main(int argc, char *argv[])
 	Textures _textures(20000);
 	gl_textures = &_textures;
 
-  Audio.start();
+  //Audio.start();
   //Audio.play(new Sine(140, 0.01));
 
   Games games;
@@ -3016,7 +3005,7 @@ int main(int argc, char *argv[])
 
   } // while running
 
-  Audio.stop();
+  //Audio.stop();
 
   running = false;
 
