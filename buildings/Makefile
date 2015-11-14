@@ -74,3 +74,9 @@ gml10:
 gml11:
 	./section_citygml.py src-citygml/Treptow-Koepenick
 
+
+test_cpp_sections:
+	g++ -std=c++11 -Iinclude -Icpp-sections -o test_cpp_sections test_cpp_sections.cpp cpp-sections/*.o
+
+clean-yes-im-sure:
+	rm -rf gml-sections cpp-sections

@@ -72,7 +72,6 @@ def handle_src_dir(src_dir):
       member_str = None
       member_lower_corner = None
       member_lower_upper = None
-      exit(0)
       continue
 
 

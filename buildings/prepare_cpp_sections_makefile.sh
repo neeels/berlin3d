@@ -49,8 +49,8 @@ echo
 echo
 echo "static const DwellingData* all_sections[] = {"
 for section in *; do
-  echo "  s_${section},"
+  echo "  &s_${section},"
 done
-echo "}"
+echo "};"
 
 ) > cpp-sections/all_sections.h
