@@ -6,6 +6,7 @@ typedef unsigned int uint;
 
 struct BuildingData {
 //  const char *const id;
+  const char *const bezirk;
   Pt pos;
   Pt box_size;
   uint walls_start_idx;

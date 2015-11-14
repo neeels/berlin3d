@@ -18,7 +18,6 @@ echo
 
 echo "cpps: \\"
 
-cd gml-sections
 for section in *; do
   echo " s_${section}.cpp \\"
 done

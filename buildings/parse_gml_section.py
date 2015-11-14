@@ -4,7 +4,7 @@ LIMIT_BUILDINGS = None
 DEFINED_MID = (387690.658211, 5801906.009784, 94.15)
 
 import sys, os.path
-from xml.sax import saxutils, handler, make_parser
+import xml.sax as sax
 
 src_section = sys.argv[1]
 name = 's_' + os.path.basename(src_section)
@@ -56,6 +56,7 @@ def offsets(mid, floats_lists):
 
 class Building:
   id_str = None
+  bezirk = None
   lower_corner = None
   upper_corner = None
   pos = None
@@ -79,10 +80,10 @@ class Building:
 class Done(Exception):
 	pass
 
-class CityGml(handler.ContentHandler):
+class CityGml(sax.handler.ContentHandler):
 
     def __init__(self, out = sys.stdout):
-        handler.ContentHandler.__init__(self)
+        sax.handler.ContentHandler.__init__(self)
         self._out = out
 
     def startDocument(self):
@@ -94,15 +95,19 @@ class CityGml(handler.ContentHandler):
         self.tex_coords = {}
         self.tex_id = None
         self.ring_id = None
+        self.bezirk = None
         
     def startElement(self, name, attrs):
       self.depth += 1
-      print '%d <%s> %d %d' % (self.state, name, self.depth, self.building_depth)
       self.contents = ''
+      if name == 'cityObjectMember':
+        self.bezirk = attrs.get('bezirk')
+
       if name == 'bldg:Building':
         self.building_depth = self.depth
         self.building = Building()
         self.building.id_str = attrs.get('gml:id')
+        self.building.bezirk = self.bezirk
         self.building.walls = []
         self.state = 1
 
@@ -123,7 +128,6 @@ class CityGml(handler.ContentHandler):
 
 
     def endElement(self, name):
-      print '</%s>' % name
       if self.building and name == 'gml:posList':
         self.building.walls.append((self.ring_id, parse_floats(self.contents, 0)))
 
@@ -163,12 +167,12 @@ class CityGml(handler.ContentHandler):
     def characters(self, content):
       self.contents += content
 
+gml_src = ''.join(('<root>\n',
+                   open(src_section).read(),
+                   '\n</root>\n'))
 gml = CityGml()
-
-parser = make_parser()
-parser.setContentHandler(gml)
 try:
-	parser.parse(src_section)
+	sax.parseString(gml_src, gml)
 except Done:
   pass
 
@@ -288,6 +292,7 @@ print ',\n'.join([
   ('  { '
    + ',\n    '.join((
           #'.id = "%s"' % b.id_str,
+          '.bezirk = "%s"' % b.bezirk,
           '.pos = {%f, %f, %f}' % tuple(b.pos),
           '.box_size = {%f, %f, %f}' % tuple(b.size),
           '.walls_start_idx = %d' % b.walls_start_idx,

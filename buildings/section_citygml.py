@@ -58,7 +58,7 @@ def handle_src_dir(src_dir):
       line = line[:-2] + '\n'
 
     if line.startswith(' <cityObjectMember>'):
-      member_str = [ '<cityObjectMember bezirk="%s">' % bezirk ]
+      member_str = [ '<cityObjectMember bezirk="%s">\n' % bezirk ]
       continue
 
     elif line.startswith(' </cityObjectMember>'):
