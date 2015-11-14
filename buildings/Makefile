@@ -1,5 +1,7 @@
 CPUs = 4
 
+all: src-names cpp-sections gml-sections
+
 src-names:
 	mkdir src-names
 	ln -s ../src-citygml/Charlottenburg-Wilmersdorf/ src-names/cburg_wilmersdf
@@ -15,7 +17,7 @@ src-names:
 	ln -s ../src-citygml/Tempelhof-Schoeneberg/ src-names/tempelhf_schoenebg
 	ln -s ../src-citygml/Treptow-Koepenick/ src-names/treptow_koepenick
 
-.PHONY: new-gml-sections gml-sections new-cpp-sections
+.PHONY: new-gml-sections new-cpp-sections
 
 new-cpp-sections:
 	rm -rf cpp-sections
