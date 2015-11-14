@@ -38,10 +38,10 @@ PLATFORM_DEFINES=-Dx64linux -m64
 endif
 
 # Source Dirs
-SRC_FILES 	= ecw2jpg.c
+SRC_FILES 	= ecw2raw.c
 INCLUDE_DIR	:= $(erdas)/include
 
-OBJ 		= ecw2jpg.o
+OBJ 		= ecw2raw.o
 OUT_DIR		:= $(erdas)/bin/$(PLATFORM_CONF)/$(CONFIG_TARGET)
 LIB_DIR		:= $(erdas)/lib/$(PLATFORM_CONF)/$(CONFIG_TARGET)
 
@@ -72,8 +72,8 @@ O_FILES_OUT	=$(addprefix $(OUT_DIR)/,dexample1)
 ####################################################
 
 
-run: ecw2jpg
-	LD_LIBRARY_PATH=$(LIB_DIR) ./ecw2jpg dop20_404_5810.ecw
+run: ecw2raw
+	LD_LIBRARY_PATH=$(LIB_DIR) ./ecw2raw src-ecw/dop20_404_5810.ecw
 
 erdas-sdk:
 	@echo
@@ -94,8 +94,8 @@ clean:
 clean-all: clean
 	$(RM) $(EXEC)
 
-ecw2jpg: ecw2jpg.c erdas-sdk
-	g++ -g -I. -I$(erdas)/include -o ecw2jpg ecw2jpg.c -L$(LIB_DIR) -lNCSEcw
+ecw2raw: ecw2raw.c erdas-sdk
+	g++ -g -I. -I$(erdas)/include -o ecw2raw ecw2raw.c -L$(LIB_DIR) -lNCSEcw
 
 
 

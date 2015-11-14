@@ -1,27 +1,3 @@
-/********************************************************************** 
-** Copyright, 1998 - 2014, Intergraph Corporation. All rights reserved.
-***********************************************************************/
-
-/** @file dexample1.c */
-
-/**
- * @page Examples
- * @section Decompression Decompression
- * @subsection dexample1 Decompression Example 1
- * @link dexample1.c @endlink <br>
- * 
- * This example demonstrates the <i><b>blocking</b></i> interface into the NCSEcw
- * library.  The application opens a view, reads the view, then reads another view.
- * 
- * This example uses the BIL read call; you could instead use the RGB call if
- * you want to the library to always return a straight RGB image regardless of source.
- * 
- * This example demonstrates the @link NCSOpenFileView @endlink, 
- * @link NCSCloseFileView @endlink, @link NCSGetViewFileInfo @endlink, 
- * @link NCSSetFileView @endlink and @link NCSReadViewLineBIL @endlink functions.
- */
-
-#include <time.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <stdio.h>
@@ -106,7 +82,6 @@ int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportT
 	UINT32	*band_list = NULL;	/* list of individual bands to read, may be subset of actual bands */
 	INT32 nEPSG = -1;
 	clock_t	start_time, mark_time;
-	UINT32 nMaxWindow;
 
 	printf("ECW READ EXAMPLE\n");
 	start_time = mark_time = clock();
@@ -148,22 +123,20 @@ int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportT
 	for( band = 0; band < nBands; band++ )
 		band_list[band] = band;
 
-// All of image
+	// All of image
 	start_x = 0;		start_y = 0;
 	end_x = x_size - 1;	end_y = y_size - 1;
 	number_x = x_size;	number_y = y_size;
 
-	// error when MAX_WINDOW > image width or height
-	nMaxWindow = MAX_WINDOW;
-	nMaxWindow = NCSMin(nMaxWindow, x_size);
-	nMaxWindow = NCSMin(nMaxWindow, y_size);
+	number_x = number_y = 8192;
+	printf("SCALING to %dx%d\n", number_x, number_y);
 
 	{
 		printf("[%d,%d] to [%d,%d] for [%d,%d]\n",
 					 start_x, start_y, end_x, end_y, number_x, number_y);
 		fflush(stdout);
 
-		FILE *rgb_out = fopen("rgb.out", "w");
+		FILE *rgb_out = fopen("out.rgb", "w");
 
 		eError = NCSSetFileView(pNCSFileView, 
 						nBands, band_list,
