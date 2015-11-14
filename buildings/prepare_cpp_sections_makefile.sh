@@ -12,7 +12,7 @@ echo
 echo
 
 echo "%.o: %.cpp"
-echo "\tg++ -std=c++11 -I../include -c \$<"
+echo "\tg++ -std=c++11 -I../../include -c \$<"
 echo
 echo
 
