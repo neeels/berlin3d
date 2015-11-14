@@ -6,4 +6,5 @@ satbild/erdas-sdk
 satbild/src-ecw/
 satbild/jpgs/
 .*.sw?
-
+*.pyc
+*.o

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys, os, os.path, time
-import filelock
+from filelock import *
 
 # For benefit of speed, this parses for a very specific formatting of XML found
 # in these particular datasets.
@@ -14,7 +14,7 @@ def section_str(point):
   return '%04d_%04d_%04d' % section_of(point)
 
 def parse_floats(floats_str):
-  tokens = floats_str.split();
+  tokens = floats_str.split()
   return [float(t) for t in tokens]
 
 def midpoint(floats_lists):
@@ -37,7 +37,8 @@ def handle_src_dir(src_dir):
   if not src_dir.endswith('/'):
     src_dir += '/'
 
-  gml_fname = src_dir + 'citygml.gml';
+  bezirk = os.path.basename(src_dir)
+  gml_fname = src_dir + 'citygml.gml'
 
   if not os.path.exists(gml_fname):
     print "Invalid source:", gml_fname
@@ -65,6 +66,7 @@ def handle_src_dir(src_dir):
       member_upper_corner = line[22:-19]
 
     elif line.startswith(' </cityObjectMember>'):
+      member_str.append('<bezirk name="%s"/>' % bezirk)
       member_str.append(line)
 
       store(src_dir,

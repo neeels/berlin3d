@@ -1,3 +1,4 @@
+CPUs = 4
 
 src-names:
 	mkdir src-names
@@ -22,7 +23,7 @@ new-gml-sections:
 
 gml-sections:
 	mkdir gml-sections
-	make gml-section-jobs
+	make -j $(CPUs) gml-section-jobs
 
 gml-section-jobs: gml0 gml1 gml2 gml3 gml4 gml5 gml6 gml7 gml8 gml9 gml10 gml11
 
