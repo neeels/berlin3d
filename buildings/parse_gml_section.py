@@ -6,9 +6,10 @@ DEFINED_MID = (387690.658211, 5801906.009784, 94.15)
 import sys, os.path
 from xml.sax import saxutils, handler, make_parser
 
-name = sys.argv[1]
-src_dir = 'src-names/' + name + '/'
-gml_fname = src_dir + 'citygml.gml';
+DEST_DIR = 'cpp-sections'
+
+src_section = sys.argv[1]
+name = os.path.basename(src_section)
 
 def cross(a, b):
       return [a[1] * b[2] - a[2] * b[1],
@@ -167,7 +168,7 @@ gml = CityGml()
 parser = make_parser()
 parser.setContentHandler(gml)
 try:
-	parser.parse(gml_fname)
+	parser.parse(src_section)
 except Done:
   pass
 
@@ -175,7 +176,7 @@ except Done:
 h = open(name + '.h', 'w')
 h.write('''#pragma once
 
-#include "city.h"
+#include <city.h>
 extern const DwellingData {0};
 
 extern const BuildingData {0}_buildings[];
