@@ -1,6 +1,9 @@
-buildings/src-data/
-buildings/src-data-names/
+buildings/src-citygml/
+buildings/src-names/
 satbild/ERDAS-ECW_JPEG_2000_SDK-5.2.1/
-satbild/ecw2jpg
+satbild/ecw2raw
 satbild/erdas-sdk
-satbild/src-zips
+satbild/src-ecw/
+satbild/jpgs/
+.*.sw?
+
