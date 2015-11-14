@@ -6,7 +6,7 @@ if [ "$1" = "-c" ]; then
 fi
 
 target() {
-  echo "jpgs/$(basename "$1").jpg"
+  echo "jpgs/$(basename "$1").png"
 }
 
 one_ecw2jpg() {
@@ -15,7 +15,7 @@ one_ecw2jpg() {
   test -f "$1"
 	src="$1"
   dest="$(target "$1")"
-	LD_LIBRARY_PATH=./lib ./ecw2raw "$src" - | convert -size 8192x8192 -depth 8 rgb:- -quality 60 "$dest"
+	LD_LIBRARY_PATH=./lib ./ecw2raw "$src" - | convert -size 8192x8192 -depth 8 rgb:- "$dest"
   echo "wrote $dest"
 }
 
