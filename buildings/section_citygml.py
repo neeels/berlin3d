@@ -41,14 +41,16 @@ member_lower_corner = None
 member_lower_upper = None
 
 for line in open(gml_fname):
+  if line.endswith('\r\n'):
+    line = line[:-2] + '\n'
   if line.startswith(' <cityObjectMember>'):
     member_str = [ line ]
 
   # spaces match only the bldg:Building/gml:boundedBy/gml:Envelope/gml:{lower,upper}Corner
   elif line.startswith('     <gml:lowerCorner>'):
-    member_lower_corner = line[22:-20]
+    member_lower_corner = line[22:-19]
   elif line.startswith('     <gml:upperCorner>'):
-    member_upper_corner = line[22:-20]
+    member_upper_corner = line[22:-19]
 
   elif line.startswith(' </cityObjectMember>'):
     member_str.append(line)
@@ -58,6 +60,9 @@ for line in open(gml_fname):
     member_str = None
     member_lower_corner = None
     member_lower_upper = None
+
+  elif member_str is not None:
+    member_str.append(line)
     
 
 #vim: expandtab nocin ai
