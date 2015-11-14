@@ -8,6 +8,9 @@ set -e
 
 get_one() {
   name="$1"
+  if [ -f "$1" ]; then
+    return 0
+  fi
   wget -c "http://fbarc.stadt-berlin.de/FIS_Broker_Atom/DOP/dop20c_2014/${1}.ZIP"
   unzip "${1}.ZIP"
   r="$?"
