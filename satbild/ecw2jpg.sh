@@ -10,14 +10,13 @@ target() {
 }
 
 one_ecw2jpg() {
-  rm out.rgb
   mkdir -p jpgs
   set -e
   test -f "$1"
-  make ecw2raw
-	LD_LIBRARY_PATH=./lib ./ecw2raw src-ecw/dop20_404_5810.ecw
-  test -f out.rgb
-  convert -size 8192x8192 -depth 8 out.rgb -quality 60 "$(target "$1")"
+	src="$1"
+  dest="$(target "$1")"
+	LD_LIBRARY_PATH=./lib ./ecw2raw "$src" - | convert -size 8192x8192 -depth 8 rgb:- -quality 60 "$dest"
+  echo "wrote $dest"
 }
 
 for f in $@; do

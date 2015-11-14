@@ -72,8 +72,8 @@ O_FILES_OUT	=$(addprefix $(OUT_DIR)/,dexample1)
 ####################################################
 
 
-run: ecw2raw
-	LD_LIBRARY_PATH=$(LIB_DIR) ./ecw2raw src-ecw/dop20_404_5810.ecw
+def: ecw2raw
+#LD_LIBRARY_PATH=$(LIB_DIR) ./ecw2raw src-ecw/dop20_404_5810.ecw
 
 erdas-sdk:
 	@echo

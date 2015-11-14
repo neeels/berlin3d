@@ -13,12 +13,13 @@
 
 int setup_report(int argc, char *argv[],
 			char **p_p_input_ecw_filename);
-int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportTime );
+int ecw2rgb(const char *in_path, const char *out_path);
 
 int main(int argc, char **argv)
 {
 
-	char	*szInputFilename;
+	char	*in_path;
+	char	*out_path;
 	int		nError = 0;
 
 	/*
@@ -26,16 +27,16 @@ int main(int argc, char **argv)
 	 */
 	NCSInit();
 	
-  	/*
-	**	Find file names, and open the output
-	*/
-	if( setup_report(argc, argv,
-		&szInputFilename) )
-	{
-		return( 1 );
+	if (argc != 3) {
+	  printf("Usage: %s <in.ecw> <out.rgb>\n", argv[0]);
+	  return(1);
 	}
 
-	nError = test_openview(szInputFilename, FALSE, TRUE);
+	in_path = argv[1];
+	out_path = argv[2];
+
+
+	nError = ecw2rgb(in_path, out_path);
 	if( nError ) {
 		printf("Openview test returned an error\n");
 		NCSShutdown();        
@@ -49,23 +50,11 @@ int main(int argc, char **argv)
 
 
 
-int setup_report(int argc, char *argv[],
-			char **ppInputFilename)
-{
-	if (argc != 2) {
-	  printf("Usage: %s <input filename.ecw>\n", argv[0]);
-	  return(1);
-	}
-
-	*ppInputFilename = argv[1];
-	return(0);
-}
-
 /*****************************************************************
 **	NCS Test: READING a file
 *****************************************************************/
 
-int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportTime )
+int ecw2rgb(const char *in_path, const char *out_path)
 {
 
 	NCSFileView *pNCSFileView;
@@ -88,29 +77,18 @@ int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportT
 	/*
 	**	Open the input NCSFileView
 	*/
-	eError = NCSOpenFileViewA(szInputFilename, &pNCSFileView, NULL);
+	eError = NCSOpenFileViewA(in_path, &pNCSFileView, NULL);
 
 	if (eError != NCS_SUCCESS) {
-		printf("Could not open view for file:%s\n",szInputFilename);
+		printf("Could not open view for file:%s\n",in_path);
 		printf("Error = %s\n", NCSGetErrorText(eError));
 		return(1);
 	}
 	NCSGetViewFileInfo(pNCSFileView, &pNCSFileInfo);
 	x_size = pNCSFileInfo->nSizeX;
 	y_size = pNCSFileInfo->nSizeY;
-	nBands = pNCSFileInfo->nBands;
-	printf("Input file is [%ld x %ld by %d bands]\n",
-		(long)x_size, (long)y_size, nBands);
+	//nBands = pNCSFileInfo->nBands;
 	nBands = 3;
-
-	if(NCSGetEPSGCode(pNCSFileInfo->szProjection, pNCSFileInfo->szDatum, &nEPSG) == NCS_SUCCESS) {
-		printf("Input file is georeferenced [EPSG:%d]\n", nEPSG);
-	} else if(pNCSFileInfo->szProjection && pNCSFileInfo->szDatum) {
-		printf("Input file is georeferenced [Projection:%s, Datum:%s]\n", pNCSFileInfo->szProjection, pNCSFileInfo->szDatum);
-	} else {
-		printf("Input file is not georeferenced\n");
-	}
-	fflush(stdout);
 
 	// Have to set up the band list. Compatible with ER Mapper's method.
 	// In this example we always request all bands.
@@ -129,14 +107,18 @@ int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportT
 	number_x = x_size;	number_y = y_size;
 
 	number_x = number_y = 8192;
-	printf("SCALING to %dx%d\n", number_x, number_y);
+	//printf("SCALING to %dx%d\n", number_x, number_y);
 
 	{
 		printf("[%d,%d] to [%d,%d] for [%d,%d]\n",
 					 start_x, start_y, end_x, end_y, number_x, number_y);
 		fflush(stdout);
 
-		FILE *rgb_out = fopen("out.rgb", "w");
+		FILE *rgb_out;
+		if (out_path[0] == '-' && out_path[1] == '\0')
+			rgb_out = stdout;
+		else
+			rgb_out = fopen(out_path, "w");
 
 		eError = NCSSetFileView(pNCSFileView, 
 						nBands, band_list,
@@ -166,8 +148,8 @@ int test_openview( char *szInputFilename, BOOLEAN bRandomReads, BOOLEAN bReportT
 		}
 
 		fflush(rgb_out);
-		fclose(rgb_out);
-		printf("lines: %d\n", line);
+		if (rgb_out != stdout)
+			fclose(rgb_out);
 	}
 
 	// Set bFreeCacheFile to TRUE if this is the last view and you want
