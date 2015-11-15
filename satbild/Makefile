@@ -2,6 +2,9 @@
 # dexample1
 ####################################################
 
+convert-all:
+	./ecw2jpg.sh -c src-ecw/*
+
 erdas = erdas-sdk/Desktop_Read-Only
 
 #include $(erdas)/examples/ecwjp2make.opt

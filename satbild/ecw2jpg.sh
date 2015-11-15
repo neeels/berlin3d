@@ -1,12 +1,12 @@
 #!/bin/sh
-do_all=0
+skip_existing=0
 if [ "$1" = "-c" ]; then
   shift
-  do_all=1
+  skip_existing=1
 fi
 
 target() {
-  echo "jpgs/$(basename "$1").png"
+  echo "jpgs/$(basename "$1").jpg"
 }
 
 one_ecw2jpg() {
@@ -20,7 +20,7 @@ one_ecw2jpg() {
 }
 
 for f in $@; do
-  if [ "$do_all" = "1" ]; then
+  if [ "$skip_existing" = "1" ]; then
     if [ -f "$(target "$f")" ]; then
       continue
     fi
