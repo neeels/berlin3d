@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 LIMIT_BUILDINGS = None
-DEFINED_MID = (387690.658211, 5801906.009784, 94.15)
+DEFINED_ZERO = (392527.9083756145, 5816908.92046828, 35.18999826709)
 
 import sys, os.path
 import xml.sax as sax
@@ -248,11 +248,11 @@ for b in gml.buildings:
 
     wall_count += 1
 
-if DEFINED_MID is None:
-  mid, points = mid_and_offsets(points)
+if DEFINED_ZERO is None:
+  zero, points = mid_and_offsets(points)
 else:
-  mid = DEFINED_MID
-  points = offsets(mid, points)
+  zero = DEFINED_ZERO
+  points = offsets(zero, points)
 
 points_min = list(points[0])
 points_max = list(points[0])
@@ -265,11 +265,11 @@ for p in points:
   points_max[2] = max(points_max[2], p[2])
 
 
-ofs = offsets(mid, [b.pos for b in gml.buildings])
+ofs = offsets(zero, [b.pos for b in gml.buildings])
 for i in range(len(gml.buildings)):
   gml.buildings[i].pos = ofs[i]
 
-print '  .mid = {%f, %f, %f},' % tuple(mid)
+print '  .zero = {%f, %f, %f},' % tuple(zero)
 print '  .points_min = {%f, %f, %f},' % tuple(points_min)
 print '  .points_max = {%f, %f, %f},' % tuple(points_max)
 print '  .n_buildings = %d,' % len(gml.buildings)

@@ -2205,8 +2205,9 @@ class Bezirk {
       d = &data;
 			printf("%s\n", d->name);
 
-      printf("mid ");
-      d->mid.print();
+      printf("min/max ");
+      d->points_min.print();
+      d->points_max.print();
 
       buildings.resize(d->n_buildings);
       int i = 0;
@@ -2216,7 +2217,13 @@ class Bezirk {
         i++;
       }
 
-      Pt X(-541.03, -1665.42, 0.000);
+#if 0
+      Pt Xabs(392527.9083756145, 5816908.92046828, 35.18999826709);
+      Pt X = Xabs - d->zero;
+#else
+      // Pt X(-8210.638, 1657.400, 206.526); // Amtsgericht
+      Pt X(-9401.913, 1716.132, 68.251); // ICC
+#endif
 
       textures.resize(data.n_images);
 			for (i = 0; i < data.n_images; i++) {
@@ -2238,6 +2245,8 @@ class Bezirk {
           }
 
         }
+        else
+          b->c.random();
 			}
 #if 0
       bboxes is vector<Ufo>
@@ -2258,9 +2267,20 @@ class Bezirk {
 
     void draw(const Pt &around, double dist)
     {
+      if (around.cart_dist_to_box(d->points_min, d->points_max)
+          > dist)
+        return;
+      /*
+      printf("around "); around.print();
+      printf("box\n");
+      d->points_min.print();
+      d->points_max.print();
+*/
       foreach (b, buildings) {
-        if ((b->b->pos - around).len() < dist)
+        double dd = (b->b->pos - around).len();
+        if (dd < dist) {
           b->draw(*this);
+        }
       }
     }
 };
@@ -2331,11 +2351,16 @@ class Berlin : public Game {
     Param roll_z;
     Param cam_nod;
 
+    Pt c0, c1;
+    bool first;
+
+
     Berlin(World &w) :
       Game(w),
       scale(.1),
       center(393100.658211, 5818560.009784, 94.150000)
     {
+      first = true;
       r_visible = 100e3;
       points_count = 2e6;
 
@@ -2356,6 +2381,16 @@ class Berlin : public Game {
 
     void add(const DwellingData &d)
     {
+      center = d.zero;
+      if (first) {
+        c0 = d.points_min;
+        c1 = d.points_max;
+        first = false;
+      }
+      else {
+        c0.set_min(d.points_min);
+        c1.set_max(d.points_max);
+      }
       bezirke.resize(bezirke.size() + 1);
       Bezirk &b = bezirke.back();
       b.setup(d);
@@ -2382,7 +2417,7 @@ class Berlin : public Game {
       pos.set(0, 0, 50);
       ori.nose.set(0, 1, 0);
       ori.top.set(0, 0, 1);
-      cam_angle = -.3;
+      cam_angle = -1.5;
 
       map.ori.clear();
       /* xberg.png 
@@ -2391,9 +2426,10 @@ class Berlin : public Game {
       map.ori.top.rot_about(map.ori.nose, 0.022361);
       */
 
-      map.pos.set(-249.119087,-1717.710267,-70.000000);
+      map.pos.set(-249.119087,-117.710267,-70.000000);
       map.scale.set(73718.681667,73718.681667,73718.681667);
       map.ori.top.rot_about(map.ori.nose, -0.034907);
+
 
 
 
@@ -2467,7 +2503,7 @@ class Berlin : public Game {
       Game::draw_scene();
 
       Pt unscaled_pos = pos.unscaled(scale).without(Pt(0, 0, 1));
-      double max_dist = 20 / scale.x;
+      double max_dist = 100 / scale.x;
 
       foreach (b, bezirke) {
         b->draw(unscaled_pos, max_dist);
@@ -2575,6 +2611,10 @@ class Berlin : public Game {
 
       case ' ':
         if (down) {
+          printf("POS ");
+          pos.unscaled(scale).print();
+
+          /*
           Pt z(0, 0, 1);
           Pt ofs = (pos - map.pos).without(z);
           ofs.rot_about(z, - map.ori.rot3().z);
@@ -2584,6 +2624,7 @@ class Berlin : public Game {
           printf("\nofs @ pos\n");
           ofs.print();
           pos.without(z).print();
+          */
           fflush(stdout);
         }
         break;
@@ -2642,7 +2683,12 @@ class Berlin : public Game {
 
 void Berlin::populate()
 {
-
+  for (int i = 0; i < ARRAY_SIZE(all_sections); i++) {
+    add(*all_sections[i]);
+  }
+  printf("Range\n");
+  c0.print();
+  c1.print();
 }
 
 class Games {
