@@ -126,6 +126,7 @@ Texture *Textures::load(const char *path)
     static int count = 0; // ick!
     count ++;
     printf("%p: Loaded texture nr %d (id=%d): %s\n", &t, count, (int)t.id, path);
+		fflush(stdout);
   }
 
   return &t;

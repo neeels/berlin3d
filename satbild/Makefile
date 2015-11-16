@@ -3,7 +3,7 @@
 ####################################################
 
 convert-all:
-	./ecw2jpg.sh -c src-ecw/*
+	./ecw2jpg.sh -c src-ecw/*.ecw
 
 erdas = erdas-sdk/Desktop_Read-Only
 

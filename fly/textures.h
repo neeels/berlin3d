@@ -40,6 +40,13 @@ class Texture {
 
     /* rather invoke via Textures::load(). */
     bool load(GLuint id, const char *path, bool use_mip_map=false);
+
+    void unload()
+    {
+      loaded = false;
+      path = NULL;
+      native_w = native_h = -1;
+    }
 };
 
 
