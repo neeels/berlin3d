@@ -286,7 +286,7 @@ class Visible {
   public:
     vector<Point> points;
     vector<Face> faces;
-    Texture *texture;
+    Texture texture;
     PtGl scale;
     PtGl pos;
     Orientation ori;
@@ -297,8 +297,7 @@ class Visible {
       :scale(1, 1, 1),
        shape_changed(false),
        _radius(0),
-       opacity(1),
-       texture(0)
+       opacity(1)
     {
       scale.set(1, 1, 1);
     }
@@ -347,8 +346,10 @@ class Visible {
 #if DRAW_SPHERES
       glutSolidSphere(.5, 20, 16);
 #else
-      if (texture)
-        texture->begin();
+      bool tex_loaded = texture.loaded();
+      if (tex_loaded) {
+        texture.begin();
+      }
 
       int l;
 
@@ -362,7 +363,7 @@ class Visible {
         face.n.glNormal();
         for (int j = 0; j < (Face::N    +1     ); j++) {
           Point &p = points[face.point_idx[j%3]];
-          if (texture)
+          if (tex_loaded)
             p.t.glTexCoord();
           Draw::color_point(p, opacity);
         }
@@ -377,7 +378,7 @@ class Visible {
         face.n.glNormal();
         for (int j = 0; j < (Face::N); j++) {
           Point &p = points[face.point_idx[j%3]];
-          if (texture)
+          if (tex_loaded)
             p.t.glTexCoord();
           Draw::color_point(p, opacity);
         }
@@ -386,8 +387,8 @@ class Visible {
 #endif
 
 
-      if (texture)
-        texture->end();
+      if (tex_loaded)
+        texture.end();
 #endif
       glPopMatrix();
     }
@@ -1465,19 +1466,55 @@ struct Building {
   Orientation ori;
   Mass m;
   bool gravity;
+  vector<Texture> textures;
+  bool textures_loaded;
 
   Building() :
-    gravity(true)
+    gravity(true),
+    textures_loaded(false)
   {}
 
+  void setup(const DwellingData *d, const BuildingData *b)
+  {
+    this->b = b;
+    int wall_idx = b->walls_start_idx;
+    int wall_n = b->n_walls;
+    textures.resize(wall_n);
+    for (int wall_i = 0; wall_i < wall_n; wall_i ++) {
+      int img_idx = d->wall_indices[wall_idx++];
+
+      textures[wall_i].path = d->images[img_idx];
+
+      while (d->wall_indices[wall_idx++] != -2);
+    }
+  }
+
   void draw(const Bezirk &bz);
+
+  void textures_want_loaded()
+  {
+    foreach(t, textures) {
+      t->want_loaded = true;
+    }
+    textures_loaded = true;
+  }
+
+  void textures_unload()
+  {
+    if (! textures_loaded)
+      return;
+    foreach (t, textures) {
+      t->unload();
+    }
+    textures_loaded = false;
+  }
 };
 
 class Bezirk {
   public:
     const DwellingData *d;
+    SDL_sem *change_mutex;
     vector<Building> buildings;
-		vector<Texture*> textures;
 
     void setup(const DwellingData &data)
     {
@@ -1485,12 +1522,11 @@ class Bezirk {
       buildings.resize(d->n_buildings);
       int i = 0;
       foreach(b, buildings) {
-        b->b = &(d->buildings[i]);
+        b->setup(d, &d->buildings[i]);
         b->c.random();
         i++;
       }
-
-#if 1
+#if 0
       Pt Xabs(392527.9083756145, 5816908.92046828, 35.18999826709); // graefe
       Xabs.set(390764.739, 5815775.781, 50); // thf
       Xabs.set(398598.271, 5812941.870, 208.981); // irgendwas
@@ -1502,32 +1538,6 @@ class Bezirk {
 #else
       // Pt X(-8210.638, 1657.400, 206.526); // Amtsgericht
       Pt X(-9401.913, 1716.132, 68.251); // ICC
-#endif
-
-      textures.resize(data.n_images);
-			for (i = 0; i < data.n_images; i++) {
-        textures[i] = NULL;
-      }
-
-#if 1
-      Pt z(0, 0, 1);
-      foreach (b, buildings) {
-        if ((b->b->pos - X).without(z).cart_len() < 300) {
-          b->c = 1;
-          int wall_idx = b->b->walls_start_idx;
-          int wall_n = b->b->n_walls;
-          while (wall_n--) {
-            int img_idx = data.wall_indices[wall_idx++];
-            
-            const char *path = data.images[img_idx];
-            if (path)
-              textures[img_idx] = gl_textures->load(path);
-
-            while (data.wall_indices[wall_idx++] != -2);
-          }
-
-        }
-			}
 #endif
 
 #if 0
@@ -1545,6 +1555,7 @@ class Bezirk {
       }
 #endif
 
+      change_mutex = SDL_CreateSemaphore(1);
     }
 
     void draw(const Pt &around, double dist)
@@ -1558,11 +1569,30 @@ class Bezirk {
       d->points_min.print();
       d->points_max.print();
 */
+      SDL_SemWait(change_mutex);
       foreach (b, buildings) {
         double dd = (b->b->pos - around).len();
         if (dd < dist) {
           b->draw(*this);
         }
+      }
+      SDL_SemPost(change_mutex);
+    }
+
+    void check_textures(const Pt &around, double dist)
+    {
+      if (around.cart_dist_to_box(d->points_min, d->points_max)
+          > dist) {
+        foreach (b, buildings) {
+          b->textures_unload();
+        }
+        return;
+      }
+
+      Pt z(0, 0, 1);
+      foreach (b, buildings) {
+        if ((b->b->pos - around).without(z).len() <= dist)
+          b->textures_want_loaded();
       }
     }
 };
@@ -1583,17 +1613,22 @@ void Building::draw(const Bezirk &bz) {
 	int wall_idx = b->walls_start_idx;
 	int normal_idx = b->normals_start_idx;
 	int normal_idx_end = normal_idx + b->n_walls;
-	for (; normal_idx < normal_idx_end; normal_idx ++) {
+  int texture_i = 0;
+	for (; normal_idx < normal_idx_end; normal_idx ++, texture_i ++) {
 
 		int img_idx = d.wall_indices[wall_idx++];
 		int tex_points_idx = d.wall_indices[wall_idx++];
 
-		Texture *texture = NULL;
-		if ((img_idx >= 0) && (tex_points_idx >= 0))
-			texture = bz.textures[img_idx];
+		Texture *texture = &textures[texture_i];
+    if (! texture->loaded())
+      texture = NULL;
 
-		if (texture)
+		if (texture) {
 			texture->begin();
+      Color().glColor(); // white
+    }
+    else
+      c.glColor();
 
 		//Draw::begin(GL_LINE_STRIP);
 		//Draw::begin(GL_TRIANGLES);//GL_POLYGON);//GL_LINE_STRIP);
@@ -1602,8 +1637,6 @@ void Building::draw(const Bezirk &bz) {
 
 		const double *n = d.normals[normal_idx];
 		::glNormal3d(n[0], n[1], n[2]);
-
-		c.glColor();
 
 		int point_idx;
 		while ((point_idx = d.wall_indices[wall_idx++]) >= 0) {
@@ -1673,16 +1706,12 @@ public:
   
   void have_loaded()
   {
-    if (!texture)
-      texture = gl_textures->load(path);
+    texture.want_loaded = true;
   }
 
   void have_unloaded()
   {
-    if (texture) {
-      texture->unload();
-      texture = NULL;
-    }
+    texture.unload();
   }
 
   void setup(const Pt &zero, const char *dir, const char *tile_fname)
@@ -1764,6 +1793,8 @@ public:
 
 };
 
+int berlin_texture_thread(void *arg);
+
 class Berlin : public Game {
   public:
     vector<Bezirk> bezirke;
@@ -1778,11 +1809,15 @@ class Berlin : public Game {
 
     int points_count;
 
+    bool running;
+
     Param move_forward;
     Param move_sideways;
     Param move_up;
     Param roll_z;
     Param cam_nod;
+
+    SDL_sem *change_mutex;
 
     Berlin(World &w) :
       Game(w),
@@ -1797,6 +1832,8 @@ class Berlin : public Game {
 
       map.setup(zero, "../satbild/jpgs");
       map.pos.set(-4.286817,-0.058354,35.000000);
+
+      change_mutex = SDL_CreateSemaphore(1);
     }
 
     void gravity_toggle()
@@ -1827,7 +1864,47 @@ class Berlin : public Game {
       b.setup(d);
     }
 
-    virtual void populate();
+    void populate()
+    {
+      for (int i = 0; i < ARRAY_SIZE(all_sections); i++) {
+        add(*all_sections[i]);
+      }
+    }
+
+    void textures_thread()
+    {
+      Pt last_pos = pos + 1;
+
+      while (running) {
+        SDL_SemWait(change_mutex);
+        bool go = (pos - last_pos).len() > 1;
+        if (go) {
+          last_pos = pos;
+        }
+        SDL_SemPost(change_mutex);
+
+        if (!go) {
+          SDL_Delay(100);
+          continue;
+        }
+        printf("checking.\n");
+        fflush(stdout);
+
+        foreach (bez, bezirke) {
+          foreach (bld, bez->buildings) {
+            foreach (t, bld->textures) {
+              if (t->want_loaded && ! t->loaded()) {
+                SDL_SemWait(bez->change_mutex);
+                t->try_load(*gl_textures);
+                SDL_SemPost(bez->change_mutex);
+              }
+            }
+          }
+        }
+        printf("done checking.\n");
+        fflush(stdout);
+      }
+    }
 
     virtual void add_lights()
     {
@@ -1871,10 +1948,10 @@ class Berlin : public Game {
       //cam.backdrop.texture = gl_textures->load("backdrop_bat.jpg");
       //cam.backdrop.texture = gl_textures->load("backdrop_stone.jpg");
       //cam.backdrop.texture = gl_textures->load("backdrop_western.jpg");
-      cam.backdrop.texture = gl_textures->load("backdrop.jpg");
+      cam.backdrop.texture.want("backdrop.jpg");
       cam.backdrop.scale = 2e3;
 
-      if (cam.backdrop.texture)
+      if (cam.backdrop.texture.path)
         cam.backdrop.color_scheme(Pt(1), 0);
       else
         cam.backdrop.color_scheme(Pt(0x7f, 0xbf, 0xff)/2550);
@@ -1893,6 +1970,8 @@ class Berlin : public Game {
         world.add(gmap);
         */
 
+      running = true;
+      SDL_CreateThread(berlin_texture_thread, this);
     }
 
     virtual void step()
@@ -2076,6 +2155,14 @@ class Berlin : public Game {
         }
         break;
 
+      case 't':
+        if (down) {
+          Pt z(0, 0, 1);
+          Pt X = pos.unscaled(scale);
+          foreach (bez, bezirke) {
+            bez->check_textures(X.without(z), 150);
+          }
+        }
       }
    
       zf = pos.z/50;
@@ -2130,13 +2217,12 @@ class Berlin : public Game {
     }
 };
 
-
-void Berlin::populate()
+int berlin_texture_thread(void *arg)
 {
-  for (int i = 0; i < ARRAY_SIZE(all_sections); i++) {
-    add(*all_sections[i]);
-  }
+  Berlin *berlin = (Berlin*)arg;
+  berlin->textures_thread();
 }
+
 
 class Games {
   public:
@@ -2354,7 +2440,7 @@ int main(int argc, char *argv[])
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
 	printf("max texture size: %d\n", maxTextureSize);
 
-	Textures _textures(5000);
+	Textures _textures(8000);
 	gl_textures = &_textures;
 
   //Audio.start();

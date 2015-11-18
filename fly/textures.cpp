@@ -12,11 +12,25 @@
 #endif
 #endif
 
-GLuint load_texture(const char * filename,bool useMipMap);
+void Texture::try_load(Textures &textures)
+{
+	if (!path)
+		return;
+	if (loaded())
+		return;
+	_loaded = textures.unused_slot();
+	if (! _loaded)
+		return;
+	_loaded->taken = this;
+	if (! load(false))
+		unload();
+}
+
 SDL_Surface * flip_surface(SDL_Surface * surface);
 
-bool Texture::load(GLuint id, const char *path, bool use_mip_map)
+bool Texture::load(bool use_mip_map)
 {
+	GLuint id = _loaded->id;
   SDL_Surface * picture_surface = NULL;
   picture_surface = IMG_Load(path);
   if (picture_surface == NULL) {
@@ -77,60 +91,47 @@ bool Texture::load(GLuint id, const char *path, bool use_mip_map)
   SDL_FreeSurface(gl_flipped_surface);
   SDL_FreeSurface(gl_surface);
   SDL_FreeSurface(picture_surface);
-
-  this->id = id;
-  this->path = path;
-  loaded = true;
 }
 
-Textures::Textures(int n)
+Textures::Textures(int n) :
+	all_taken(0)
 {
-	printf("Initializing %d textures\n", n);
-  textures.resize(n);
+	printf("Initializing %d texture slots\n", n);
+  slots.resize(n);
   GLuint id[n];
   glGenTextures(n, id);
 
   for (int i = 0; i < n; i++) {
-    textures[i].id = id[i];
-		printf("texture id %d\n", (int)id[i]);
+    slots[i].id = id[i];
   }
+
+	tail = 0;
 }
 
-Texture *Textures::load(const char *path)
+TextureSlot *Textures::unused_slot()
 {
-	static int out_of_textures = 0;
-  Texture *first_empty = NULL;
+	if (tail >= slots.size())
+		tail = 0;
 
-	if (!out_of_textures) { // HACK only when sure that no texture is used twice
-  foreach(t, textures) {
-    if (!(t->loaded)) {
-      if (! first_empty)
-        first_empty = &(*t);
-      continue;
-    }
-    if ((*t) == path)
-      return &(*t);
-  }
+	if (slots[tail].taken) {
+		if (! all_taken) {
+			for (int i = 0; i < slots.size(); i++) {
+				if (! slots[i].taken) {
+					tail = i;
+					break;
+				}
+			}
+		}
+		if (slots[tail].taken) {
+			all_taken ++;
+			printf("Out of texture slots! (%d + %d)\n", slots.size(), all_taken);
+			return NULL;
+		}
 	}
 
-  if (! first_empty) {
-		out_of_textures ++;
-    printf("Out of textures! (%d + %d)\n", textures.size(), out_of_textures);
-    return NULL;
-  }
-
-  Texture &t = *first_empty;
-  t.load(t.id, path);
-
-  if (t.loaded) {
-    static int count = 0; // ick!
-    count ++;
-    printf("%p: Loaded texture nr %d (id=%d): %s\n", &t, count, (int)t.id, path);
-		fflush(stdout);
-  }
-
-  return &t;
+	return &slots[tail ++];
 }
+
 
 
 int takeScreenshot(const char * filename)

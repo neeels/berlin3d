@@ -1,6 +1,6 @@
 #!/bin/sh
 SECTIONS="*"
-SECTIONS="03[89]?_58[01]?_0000"
+SECTIONS="03[89]?_58[0123]?_0000"
 
 mkdir -p cpp-sections
 (
