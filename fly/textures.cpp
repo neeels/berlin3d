@@ -6,31 +6,32 @@
 #include <cstring>
 #include <cstdlib>
 
-#if 0
-#ifndef GL_CLAMP_TO_EDGE
-#define GL_CLAMP_TO_EDGE 0x812F
-#endif
-#endif
-
 void Texture::try_load(Textures &textures)
 {
-	if (!path)
-		return;
-	if (loaded())
-		return;
-	_loaded = textures.unused_slot();
-	if (! _loaded)
-		return;
-	_loaded->taken = this;
-	if (! load(false))
-		unload();
+  if (!path)
+    return;
+  if (loaded())
+    return;
+  _loaded = textures.unused_slot();
+  if (! _loaded)
+    return;
+  _loaded->taken = this;
+  if (! load(textures, false)) {
+    _want_loaded = false;
+		printf("load failed %s\n", path);
+    unload();
+  }
+	else {
+		printf("loaded %s\n", path);
+		fflush(stdout);
+	}
 }
 
 SDL_Surface * flip_surface(SDL_Surface * surface);
 
-bool Texture::load(bool use_mip_map)
+bool Texture::load(Textures &textures, bool use_mip_map)
 {
-	GLuint id = _loaded->id;
+  GLuint id = _loaded->id;
   SDL_Surface * picture_surface = NULL;
   picture_surface = IMG_Load(path);
   if (picture_surface == NULL) {
@@ -68,6 +69,9 @@ bool Texture::load(bool use_mip_map)
   this->native_w = gl_flipped_surface->w;
   this->native_h = gl_flipped_surface->h;
 
+  if (textures.draw_mutex)
+    SDL_SemWait(textures.draw_mutex);
+
   glBindTexture(GL_TEXTURE_2D, id);
 
   if (use_mip_map)
@@ -88,48 +92,81 @@ bool Texture::load(bool use_mip_map)
   }
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 
+  if (textures.draw_mutex)
+    SDL_SemPost(textures.draw_mutex);
+
   SDL_FreeSurface(gl_flipped_surface);
   SDL_FreeSurface(gl_surface);
   SDL_FreeSurface(picture_surface);
+  return true;
 }
 
-Textures::Textures(int n) :
-	all_taken(0)
+void Texture::want_loaded(Textures &textures)
 {
-	printf("Initializing %d texture slots\n", n);
+  if (! _want_loaded) {
+		static int nn = 0;
+		if (!(nn++))
+			printf("switch to want %s\n", path);
+    _want_loaded = true;
+		textures.pending.push_back(this);
+    textures.bump();
+  }
+}
+
+void Texture::want_unloaded(Textures &textures)
+{
+  if (_want_loaded) {
+    _want_loaded = false;
+    textures.bump();
+  }
+}
+
+
+Textures::Textures(int n, SDL_sem *draw_mutex) :
+  all_taken(0),
+  draw_mutex(draw_mutex)
+{
+  bumper = SDL_CreateSemaphore(0);
+
+  printf("Initializing %d texture slots\n", n);
   slots.resize(n);
   GLuint id[n];
+
+  if (draw_mutex)
+    SDL_SemWait(draw_mutex);
   glGenTextures(n, id);
+  if (draw_mutex)
+    SDL_SemPost(draw_mutex);
 
   for (int i = 0; i < n; i++) {
     slots[i].id = id[i];
   }
 
-	tail = 0;
+  tail = 0;
 }
 
 TextureSlot *Textures::unused_slot()
 {
-	if (tail >= slots.size())
-		tail = 0;
+  if (tail >= slots.size())
+    tail = 0;
 
-	if (slots[tail].taken) {
-		if (! all_taken) {
-			for (int i = 0; i < slots.size(); i++) {
-				if (! slots[i].taken) {
-					tail = i;
-					break;
-				}
-			}
-		}
-		if (slots[tail].taken) {
-			all_taken ++;
-			printf("Out of texture slots! (%d + %d)\n", slots.size(), all_taken);
-			return NULL;
-		}
-	}
+  if (slots[tail].taken) {
+    if (! all_taken) {
+      for (int i = 0; i < slots.size(); i++) {
+        if (! slots[i].taken) {
+          tail = i;
+          break;
+        }
+      }
+    }
+    if (slots[tail].taken) {
+      all_taken ++;
+      printf("Out of texture slots! (%d + %d)\n", slots.size(), all_taken);
+      return NULL;
+    }
+  }
 
-	return &slots[tail ++];
+  return &slots[tail ++];
 }
 
 
