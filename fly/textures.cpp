@@ -6,30 +6,48 @@
 #include <cstring>
 #include <cstdlib>
 
-void Texture::try_load(Textures &textures)
+#define dbg(args...) {printf(args); fflush(stdout);}
+
+struct Preload {
+  Texture *for_texture;
+  SDL_Surface *surface;
+};
+
+void Texture::commit(Textures &textures)
 {
-  if (!path)
+  bool l = loaded_or_loading();
+  if (_want_loaded && ! l) {
+    try_preload(textures);
+  }
+  else
+    if ((! _want_loaded) && l)
+      unload();
+}
+
+void Texture::try_preload(Textures &textures)
+{
+  if (!path) {
+    dbg("!path\n");
     return;
-  if (loaded())
+  }
+  if (loaded_or_loading()) {
     return;
+  }
   _loaded = textures.unused_slot();
-  if (! _loaded)
+  if (! _loaded) {
     return;
+  }
   _loaded->taken = this;
-  if (! load(textures, false)) {
+  if (! preload(textures, false)) {
     _want_loaded = false;
-		printf("load failed %s\n", path);
     unload();
   }
-	else {
-		printf("loaded %s\n", path);
-		fflush(stdout);
-	}
 }
+
 
 SDL_Surface * flip_surface(SDL_Surface * surface);
 
-bool Texture::load(Textures &textures, bool use_mip_map)
+bool Texture::preload(Textures &textures, bool use_mip_map)
 {
   GLuint id = _loaded->id;
   SDL_Surface * picture_surface = NULL;
@@ -66,14 +84,37 @@ bool Texture::load(Textures &textures, bool use_mip_map)
   SDL_Surface *gl_flipped_surface;
   gl_flipped_surface = flip_surface(gl_surface);
 
+  SDL_FreeSurface(gl_surface);
+  SDL_FreeSurface(picture_surface);
+
+  Preload *p = new Preload();
+
+  p->for_texture = this;
+  p->surface = gl_flipped_surface;
+
+  SDL_SemWait(textures.load_mutex);
+  textures.pending_loads.push_back(p);
+  SDL_SemPost(textures.load_mutex);
+  textures.bump();
+
+  return true;
+}
+
+void Texture::load(Preload *p)
+{
+  SDL_Surface *gl_flipped_surface = p->surface;
+
+  if ((!_loaded) || (_loaded->taken != this)) {
+    SDL_FreeSurface(gl_flipped_surface);
+    return;
+  }
+
   this->native_w = gl_flipped_surface->w;
   this->native_h = gl_flipped_surface->h;
 
-  if (textures.draw_mutex)
-    SDL_SemWait(textures.draw_mutex);
+  glBindTexture(GL_TEXTURE_2D, _loaded->id);
 
-  glBindTexture(GL_TEXTURE_2D, id);
-
+#if 0
   if (use_mip_map)
   {
     gluBuild2DMipmaps(GL_TEXTURE_2D, 4, gl_flipped_surface->w,
@@ -84,6 +125,7 @@ bool Texture::load(Textures &textures, bool use_mip_map)
                     GL_LINEAR_MIPMAP_LINEAR);
   }
   else
+#endif
   {
     glTexImage2D(GL_TEXTURE_2D, 0, 4, gl_flipped_surface->w,
                  gl_flipped_surface->h, 0, GL_RGBA,GL_UNSIGNED_BYTE,
@@ -92,23 +134,23 @@ bool Texture::load(Textures &textures, bool use_mip_map)
   }
   glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
 
-  if (textures.draw_mutex)
-    SDL_SemPost(textures.draw_mutex);
+  _loaded->loaded = true;
 
   SDL_FreeSurface(gl_flipped_surface);
-  SDL_FreeSurface(gl_surface);
-  SDL_FreeSurface(picture_surface);
-  return true;
 }
 
 void Texture::want_loaded(Textures &textures)
 {
   if (! _want_loaded) {
-		static int nn = 0;
-		if (!(nn++))
-			printf("switch to want %s\n", path);
     _want_loaded = true;
-		textures.pending.push_back(this);
+  int tt = SDL_GetTicks();
+    SDL_SemWait(textures.preload_mutex);
+  int t2 = SDL_GetTicks() - tt;
+  if (t2 > 0)
+    dbg("Texture::want_loaded waited %d\n", t2);
+
+		textures.pending_preloads.push_back(this);
+    SDL_SemPost(textures.preload_mutex);
     textures.bump();
   }
 }
@@ -121,22 +163,18 @@ void Texture::want_unloaded(Textures &textures)
   }
 }
 
-
-Textures::Textures(int n, SDL_sem *draw_mutex) :
-  all_taken(0),
-  draw_mutex(draw_mutex)
+Textures::Textures(int n) :
+  all_taken(0)
 {
   bumper = SDL_CreateSemaphore(0);
+  preload_mutex = SDL_CreateSemaphore(1);
+  load_mutex = SDL_CreateSemaphore(1);
 
   printf("Initializing %d texture slots\n", n);
   slots.resize(n);
   GLuint id[n];
 
-  if (draw_mutex)
-    SDL_SemWait(draw_mutex);
   glGenTextures(n, id);
-  if (draw_mutex)
-    SDL_SemPost(draw_mutex);
 
   for (int i = 0; i < n; i++) {
     slots[i].id = id[i];
@@ -166,9 +204,55 @@ TextureSlot *Textures::unused_slot()
     }
   }
 
+  slots[tail].loaded = false;
   return &slots[tail ++];
 }
 
+
+void Textures::textures_thread()
+{
+  SDL_SemPost(bumper);
+
+  running = true;
+  while (running) {
+    SDL_SemWait(bumper);
+    while (SDL_SemTryWait(bumper) == 0);
+
+    SDL_SemWait(preload_mutex);
+
+    foreach (ti, pending_preloads) {
+      Texture *t = *ti;
+      SDL_SemPost(preload_mutex);
+      if (t) {
+        t->commit(*this);
+      }
+      SDL_SemWait(preload_mutex);
+      ti = pending_preloads.erase(ti);
+    }
+
+    SDL_SemPost(preload_mutex);
+  }
+}
+
+void Textures::do_pending_loads()
+{
+  if (! pending_loads.size())
+    return;
+  int tt = SDL_GetTicks();
+  SDL_SemWait(load_mutex);
+  int t2 = SDL_GetTicks() - tt;
+  if (t2 > 0)
+    dbg("do_pending_loads waited %d\n", t2);
+  foreach (pi, pending_loads) {
+    Preload *p = *pi;
+
+    p->for_texture->load(p);
+    pi = pending_loads.erase(pi);
+
+    delete p;
+  }
+  SDL_SemPost(load_mutex);
+}
 
 
 int takeScreenshot(const char * filename)
@@ -232,8 +316,8 @@ SDL_Surface * flip_surface(SDL_Surface * surface)
     for (current_line = 0; current_line < surface->h; current_line ++)
     {
         memcpy(&((unsigned char* )flipped_surface->pixels)[current_line*pitch],
-               &((unsigned char* )surface->pixels)[(surface->h - 1  -
-                                                    current_line)*pitch],
+               &((unsigned char* )surface->pixels)[(surface->h - 1
+                                                    - current_line)*pitch],
                pitch);
     }
 

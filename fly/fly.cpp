@@ -892,7 +892,7 @@ class Backdrop : public Visible {
         }
       }
 
-      texture.try_load(*gl_textures, "backdrop.jpg");
+      texture.try_preload(*gl_textures, "backdrop.jpg");
 
       //texture = gl_textures->load("backdrop.jpg");
       //texture = gl_textures->load("test_backdrop.png");
@@ -1277,6 +1277,7 @@ class Game {
     bool done;
     int won;
     double redraw_dist;
+    bool no_redraw_needed;
 
     Game (World &w) :
       level(0),
@@ -1284,7 +1285,8 @@ class Game {
       r_visible(15),
       done(false),
       won(0),
-      redraw_dist(0)
+      redraw_dist(0),
+      no_redraw_needed(false)
     {
     }
 
@@ -1490,7 +1492,8 @@ struct Building {
   void textures_want_loaded()
   {
     foreach(t, textures) {
-      t->want_loaded(*gl_textures);
+      if (t->path)
+        t->want_loaded(*gl_textures);
     }
     textures_loaded = true;
   }
@@ -1575,9 +1578,8 @@ class Bezirk {
         return;
       }
 
-      Pt z(0, 0, 1);
       foreach (b, buildings) {
-        if ((b->b->pos - around).without(z).len() <= dist)
+        if ((b->b->pos - around).len() <= dist)
           b->textures_want_loaded();
         else
           b->textures_unload();
@@ -1861,29 +1863,6 @@ class Berlin : public Game {
       }
     }
 
-    void textures_thread()
-    {
-      SDL_SemPost(gl_textures->bumper);
-
-      while (running) {
-        dbg("textures_thread waiting\n");
-        SDL_SemWait(gl_textures->bumper);
-        dbg("bump received\n");
-        while (SDL_SemTryWait(gl_textures->bumper) == 0);
-        dbg("bump cleared %d\n", gl_textures->pending.size());
-
-        foreach (ti, gl_textures->pending) {
-          Texture *t = *ti;
-          if (t) {
-            printf("commit %s\n", t->path);
-            t->commit(*gl_textures);
-          }
-          ti = gl_textures->pending.erase(ti);
-        }
-
-      }
-    }
-
     virtual void add_lights()
     {
       {
@@ -1926,7 +1905,7 @@ class Berlin : public Game {
       //cam.backdrop.texture = gl_textures->load("backdrop_bat.jpg");
       //cam.backdrop.texture = gl_textures->load("backdrop_stone.jpg");
       //cam.backdrop.texture = gl_textures->load("backdrop_western.jpg");
-      cam.backdrop.texture.try_load(*gl_textures, "backdrop.jpg");
+      cam.backdrop.texture.try_preload(*gl_textures, "backdrop.jpg");
       cam.backdrop.scale = 2e3;
 
       if (cam.backdrop.texture.path)
@@ -1962,7 +1941,7 @@ class Berlin : public Game {
       roll_z.step();
       cam_nod.step();
 
-      Pt z = {0, 0, 1};
+      Pt z(0, 0, 1);
       pos +=
         ori.nose.without(z) * move_forward
         + z * (move_up * max(1.,fabs(pos.z)))
@@ -1976,6 +1955,18 @@ class Berlin : public Game {
       Pt cam_dir = ori.nose.rotated_about(ori.right(), cam_angle);
 
       cam.look(pos, cam_dir, ori.top);
+
+      Pt X = pos.unscaled(scale);
+      foreach (bez, bezirke) {
+        bez->check_textures(X, 200);
+      }
+
+      no_redraw_needed = gravity
+        && (fabs(move_forward) < 1e-6)
+        && (fabs(move_sideways) < 1e-6)
+        && (fabs(move_up) < 1e-6)
+        && (fabs(cam_nod) < 1e-6)
+        && (fabs(roll_z) < 1e-6);
     }
 
     virtual void draw_scene()
@@ -2083,11 +2074,11 @@ class Berlin : public Game {
 
       case SDLK_PAGEUP:
         map.pos += Pt(0, 0, 1);
-        map.pos.print();
+        Pp(map.pos);
         break;
       case SDLK_PAGEDOWN:
         map.pos -= Pt(0, 0, 1);
-        map.pos.print();
+        Pp(map.pos);
         break;
 
       default:
@@ -2124,7 +2115,6 @@ class Berlin : public Game {
           foreach (bez, bezirke) {
             bez->check_textures(X, 150);
           }
-          textures_thread();
         }
       }
    
@@ -2179,7 +2169,7 @@ class Berlin : public Game {
 int berlin_texture_thread(void *arg)
 {
   Berlin *berlin = (Berlin*)arg;
-  berlin->textures_thread();
+  gl_textures->textures_thread();
 }
 
 
@@ -2190,10 +2180,7 @@ class Games {
     vector<Game *> games;
     int active_idx;
 
-    SDL_sem *draw_mutex;
-
-    Games(SDL_sem *draw_mutex) :
-      draw_mutex(draw_mutex)
+    Games()
     {
       games.push_back(new Berlin(world));
 
@@ -2231,12 +2218,11 @@ class Games {
     {
       game().step();
 
-      if (draw_mutex) {
-        SDL_SemWait(draw_mutex);
-      }
-      game().draw();
-      if (draw_mutex) {
-        SDL_SemPost(draw_mutex);
+      if (! game().no_redraw_needed)
+        game().draw();
+      else {
+        dbg("skip\n");
+        SDL_Delay(100);
       }
 
       if (game().done) {
@@ -2411,14 +2397,13 @@ int main(int argc, char *argv[])
   glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxTextureSize);
   printf("max texture size: %d\n", maxTextureSize);
 
-  SDL_sem *draw_mutex = SDL_CreateSemaphore(1);
-  Textures _textures(8000, draw_mutex);
-  gl_textures = &_textures;
+  Textures textures(8000);
+  gl_textures = &textures;
 
   //Audio.start();
   //Audio.play(new Sine(140, 0.01));
 
-  Games games(draw_mutex);
+  Games games;
   games.start();
 
   games.game().draw();
@@ -2432,6 +2417,7 @@ int main(int argc, char *argv[])
 
   while (running)
   {
+    textures.do_pending_loads();
     games.run();
     frames_rendered ++;
 

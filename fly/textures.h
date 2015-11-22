@@ -15,8 +15,11 @@ class Texture;
 
 struct TextureSlot {
   GLuint id;
+  bool loaded;
   Texture *taken;
 };
+
+struct Preload;
 
 class Texture {
   public:
@@ -50,18 +53,18 @@ class Texture {
             && (strcmp(this->path, path) == 0));
     }
 
-    void try_load(Textures &textures);
+    void try_preload(Textures &textures);
 
-    void try_load(Textures &textures, const char *path)
+    void try_preload(Textures &textures, const char *path)
     {
       this->path = path;
 			_want_loaded = true;
-      try_load(textures);
+      try_preload(textures);
     }
 
     void unload()
     {
-      if (loaded()) {
+      if (loaded_or_loading()) {
         _loaded->taken = NULL;
         _loaded = NULL;
       }
@@ -69,44 +72,43 @@ class Texture {
       _want_loaded = false;
     }
 
-    bool loaded() const
+
+    bool loaded_or_loading() const
     {
       return _loaded && (_loaded->taken == this);
+    }
+
+    bool loaded() const
+    {
+      return loaded_or_loading() && _loaded->loaded;
     }
 
     void want_loaded(Textures &textures);
     void want_unloaded(Textures &textures);
 
-    bool load(Textures &textures, bool use_mip_map=false);
+    bool preload(Textures &textures, bool use_mip_map=false);
 
-    void commit(Textures &textures)
-    {
-			if (_want_loaded) {
-				printf("commit %d %s\n", (int)_want_loaded, path);
-				fflush(stdout);
-			}
-      bool l = loaded();
-      if (_want_loaded && ! l)
-        try_load(textures);
-      else
-      if ((! _want_loaded) && l)
-        unload();
-    }
+    void commit(Textures &textures);
 
     bool _want_loaded;
+
+    void load(Preload *p);
 };
 
 
 class Textures {
   public:
-    SDL_sem *draw_mutex;
+    SDL_sem *preload_mutex;
+    SDL_sem *load_mutex;
+    bool running;
 
     /* Before setting up textures, OpenGL needs to know how many there will
      * be... */
-    Textures(int n, SDL_sem *draw_mutex);
+    Textures(int n);
 
     vector<TextureSlot> slots;
-		list<Texture*> pending;
+		list<Texture*> pending_preloads;
+		list<Preload*> pending_loads;
 
     TextureSlot *unused_slot();
 
@@ -116,10 +118,12 @@ class Textures {
     }
 
     void bump() {
-			printf("bumpin\n");
       SDL_SemPost(bumper);
     }
     SDL_sem *bumper;
+
+    void textures_thread();
+    void do_pending_loads();
 
   private:
     unsigned int tail;

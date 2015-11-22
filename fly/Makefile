@@ -1,7 +1,7 @@
 
 run: fly
-	./fly -g 900x500
-	#./run_fly.sh
+	#./fly -g 900x500
+	./run_fly.sh
 
 INC = ../include
 INC_SECTIONS = ../buildings/cpp-sections
