@@ -2,8 +2,17 @@
 # dexample1
 ####################################################
 
-convert-all:
-	./ecw2jpg.sh -c src-ecw/*.ecw
+convert-all: convert1 convert2 convert3 convert4
+
+convert1: ecw2jpg
+	./ecw2jpg.sh -c src-ecw/dop20_37*.ecw
+convert2: ecw2jpg
+	./ecw2jpg.sh -c src-ecw/dop20_38*.ecw
+convert3: ecw2jpg
+	./ecw2jpg.sh -c src-ecw/dop20_39*.ecw
+convert4: ecw2jpg
+	./ecw2jpg.sh -c src-ecw/dop20_4*.ecw
+
 
 erdas = erdas-sdk/Desktop_Read-Only
 
@@ -75,7 +84,6 @@ O_FILES_OUT	=$(addprefix $(OUT_DIR)/,dexample1)
 ####################################################
 
 
-def: ecw2raw
 #LD_LIBRARY_PATH=$(LIB_DIR) ./ecw2raw src-ecw/dop20_404_5810.ecw
 
 erdas-sdk:
@@ -96,6 +104,9 @@ clean:
 
 clean-all: clean
 	$(RM) $(EXEC)
+
+ecw2jpg: ecw2jpg.c erdas-sdk
+	g++ -g -I. -I$(erdas)/include -o ecw2jpg ecw2jpg.c -L$(LIB_DIR) -lNCSEcw -ljpeg
 
 ecw2raw: ecw2raw.c erdas-sdk
 	g++ -g -I. -I$(erdas)/include -o ecw2raw ecw2raw.c -L$(LIB_DIR) -lNCSEcw

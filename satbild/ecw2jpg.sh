@@ -1,4 +1,8 @@
 #!/bin/sh
+#
+# Convert all given ecw files to jpg.
+#
+#  -c  skip if target jpg already exists (default: overwrite)
 skip_existing=0
 if [ "$1" = "-c" ]; then
   shift
@@ -15,7 +19,7 @@ one_ecw2jpg() {
   test -f "$1"
 	src="$1"
   dest="$(target "$1")"
-	LD_LIBRARY_PATH=./lib ./ecw2raw "$src" - | convert -size 8192x8192 -depth 8 rgb:- "$dest"
+	LD_LIBRARY_PATH=./lib ./ecw2jpg "$src" "$dest"
   echo "wrote $dest"
 }
 

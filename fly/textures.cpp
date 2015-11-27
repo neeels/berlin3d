@@ -234,15 +234,16 @@ void Textures::textures_thread()
   }
 }
 
-void Textures::do_pending_loads()
+int Textures::do_pending_loads()
 {
   if (! pending_loads.size())
-    return;
+    return 0;
   int tt = SDL_GetTicks();
   SDL_SemWait(load_mutex);
   int t2 = SDL_GetTicks() - tt;
   if (t2 > 0)
     dbg("do_pending_loads waited %d\n", t2);
+	int count = 0;
   foreach (pi, pending_loads) {
     Preload *p = *pi;
 
@@ -250,8 +251,10 @@ void Textures::do_pending_loads()
     pi = pending_loads.erase(pi);
 
     delete p;
+		count ++;
   }
   SDL_SemPost(load_mutex);
+	return count;
 }
 
 

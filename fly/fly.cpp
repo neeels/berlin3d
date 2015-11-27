@@ -18,7 +18,7 @@ int H = 500;//1200;
 
 #define Pf(V) printf(#V "=%f\n", (float)V)
 #define Pi(V) printf(#V "=%d\n", (int)V)
-#define Pp(V) {printf(#V "="); V.print();}
+#define Pp(V) {printf(#V "="); (V).print(); fflush(stdout);}
 #define dbg(args...) {printf(args); fflush(stdout);}
 
 #include "draw.h"
@@ -844,7 +844,7 @@ class Backdrop : public Visible {
 
     Backdrop() {
       pos = 0;
-      scale = 1e3;
+      scale = 10e3;
 
       make_sphere(*this, 2);
 
@@ -1462,12 +1462,12 @@ struct Building {
   PtGl pos;
   Orientation ori;
   Mass m;
-  bool gravity;
+  bool buildings_fly;
   vector<Texture> textures;
   bool textures_loaded;
 
   Building() :
-    gravity(true),
+    buildings_fly(false),
     textures_loaded(false)
   {}
 
@@ -1487,7 +1487,7 @@ struct Building {
     }
   }
 
-  void draw(const Bezirk &bz);
+  void draw(const Bezirk &bz, bool do_mirror);
 
   void textures_want_loaded()
   {
@@ -1555,7 +1555,7 @@ class Bezirk {
 
     }
 
-    void draw(const Pt &around, double dist)
+    void draw(const Pt &around, double dist, bool do_mirror)
     {
       if (around.cart_dist_to_box(d->points_min, d->points_max)
           > dist)
@@ -1563,7 +1563,7 @@ class Bezirk {
       foreach (b, buildings) {
         double dd = (b->b->pos - around).len();
         if (dd < dist) {
-          b->draw(*this);
+          b->draw(*this, do_mirror);
         }
       }
     }
@@ -1587,71 +1587,82 @@ class Bezirk {
     }
 };
 
-void Building::draw(const Bezirk &bz) {
+void Building::draw(const Bezirk &bz, bool do_mirror) {
   const DwellingData &d = *bz.d;
 
-  if (!gravity) {
-    glPushMatrix();
-    pos.glTranslated();
-    PtGl unpos = b->pos;
-    unpos.glTranslated();
-    ori.glRotated();
-    unpos = b->pos * -1;
-    unpos.glTranslated();
-  }
+  PtGl invert = {1, 1, -1};
+  for (int mirror = 0; mirror < (do_mirror? 2 : 1); mirror ++) {
 
-  int wall_idx = b->walls_start_idx;
-  int normal_idx = b->normals_start_idx;
-  int normal_idx_end = normal_idx + b->n_walls;
-  int texture_i = 0;
-  for (; normal_idx < normal_idx_end; normal_idx ++, texture_i ++) {
-
-    int img_idx = d.wall_indices[wall_idx++];
-    int tex_points_idx = d.wall_indices[wall_idx++];
-
-    Texture *texture = &textures[texture_i];
-    if (! texture->loaded())
-      texture = NULL;
-
-    if (texture) {
-      texture->begin();
-      Color().glColor(); // white
-    }
-    else
-      c.glColor();
-
-    //Draw::begin(GL_LINE_STRIP);
-    //Draw::begin(GL_TRIANGLES);//GL_POLYGON);//GL_LINE_STRIP);
-
-    Draw::begin(GL_POLYGON);
-
-    const double *n = d.normals[normal_idx];
-    ::glNormal3d(n[0], n[1], n[2]);
-
-    int point_idx;
-    while ((point_idx = d.wall_indices[wall_idx++]) >= 0) {
-#if 1
-      if (img_idx < 0)
-        continue;
-#endif
-      if (texture) {
-        const double *tp = d.tex_coords[tex_points_idx++];
-        PtGl(tp[0], tp[1]).glTexCoord();
+    if (mirror || (buildings_fly)) {
+      glPushMatrix();
+      pos.glTranslated();
+      PtGl unpos = b->pos;
+      unpos.glTranslated();
+      if (buildings_fly)
+        ori.glRotated();
+      if (mirror) {
+        PtGl height = {0, 0, - b->box_size.z};
+        height.glTranslated();
+        invert.glScaled();
       }
-      const double *point = d.points[point_idx];
-      ::glVertex3d(point[0], point[1], point[2]);
+      unpos = b->pos * -1;
+      unpos.glTranslated();
     }
 
-    Draw::end();
+    int wall_idx = b->walls_start_idx;
+    int normal_idx = b->normals_start_idx;
+    int normal_idx_end = normal_idx + b->n_walls;
+    int texture_i = 0;
+    for (; normal_idx < normal_idx_end; normal_idx ++, texture_i ++) {
 
-    if (texture)
-      texture->end();
+      int img_idx = d.wall_indices[wall_idx++];
+      int tex_points_idx = d.wall_indices[wall_idx++];
 
+      Texture *texture = &textures[texture_i];
+      if (! texture->loaded())
+        texture = NULL;
+
+      if (texture) {
+        texture->begin();
+        Color().glColor(); // white
+      }
+      else
+        c.glColor();
+
+      //Draw::begin(GL_LINE_STRIP);
+      //Draw::begin(GL_TRIANGLES);//GL_POLYGON);//GL_LINE_STRIP);
+
+      Draw::begin(GL_POLYGON);
+
+      const double *n = d.normals[normal_idx];
+      ::glNormal3d(n[0], n[1], n[2]);
+
+      int point_idx;
+      while ((point_idx = d.wall_indices[wall_idx++]) >= 0) {
+#if 1
+        if (img_idx < 0)
+          continue;
+#endif
+        if (texture) {
+          const double *tp = d.tex_coords[tex_points_idx++];
+          PtGl(tp[0], tp[1]).glTexCoord();
+        }
+        const double *point = d.points[point_idx];
+        ::glVertex3d(point[0], point[1], point[2]);
+      }
+
+      Draw::end();
+
+      if (texture)
+        texture->end();
+
+    }
+
+    if (mirror || (buildings_fly))
+      glPopMatrix();
   }
 
-  if (!gravity) {
-    glPopMatrix();
-
+  if (buildings_fly) {
     pos += m.v * dt;
     ori.rotate_e(m.v_ang);
   }
@@ -1702,7 +1713,7 @@ public:
 
   void have_unloaded()
   {
-    texture.want_unloaded(*gl_textures);
+    texture.unload();
   }
 
   void setup(const Pt &zero, const char *dir, const char *tile_fname)
@@ -1770,10 +1781,11 @@ public:
     glPushMatrix();
     pos.glTranslated();
     foreach(t, tiles) {
-      if (around.cart_dist_to_box(t->corner0, t->corner1)
-          > dist)
+      double dd = around.cart_dist_to_box(t->corner0, t->corner1);
+      if (dd > dist)
       {
-        //t->have_unloaded();
+        if (dd > (dist * 3))
+          t->have_unloaded();
         continue;
       }
 
@@ -1788,19 +1800,78 @@ public:
 
 };
 
+struct Luftlinie {
+  vector<Point> points;
+  bool ended;
+
+  Luftlinie() :
+    ended(true)
+  {}
+
+  void start(const Pt &p)
+  {
+    clear();
+    ended = false;
+    add(p);
+    add(p);
+  }
+
+  void add(const Pt &p)
+  {
+    points.push_back(p);
+    points.back().c.set(1, 0, 0, 1);
+  }
+
+  void clear()
+  {
+    ended = true;
+    points.resize(0);
+  }
+
+  void end()
+  {
+    ended = true;
+  }
+
+  void step(const Pt &current_pos)
+  {
+    if ((! ended) && points.size()) {
+      points.back() = current_pos;
+    }
+  }
+
+  void draw()
+  {
+    if (! points.size())
+      return;
+
+    glLineWidth(5);
+    Draw::begin(GL_LINE_STRIP);
+    foreach(p, points) {
+      Draw::color_point(*p, 1);
+    }
+    Draw::end();
+  }
+};
+
 int berlin_texture_thread(void *arg);
 
 class Berlin : public Game {
   public:
     vector<Bezirk> bezirke;
     GroundMap map;
+    Luftlinie luftlinie;
 
     Pt pos;
     Orientation ori;
     double cam_angle;
     PtGl scale;
     Pt zero;
-    bool gravity;
+    bool buildings_fly;
+    bool do_mirror;
+    bool draw_map;
+
+    bool please_redraw;
 
     int points_count;
 
@@ -1811,12 +1882,16 @@ class Berlin : public Game {
     Param move_up;
     Param roll_z;
     Param cam_nod;
+    Param move_map;
 
     Berlin(World &w) :
       Game(w),
-      scale(.1),
+      scale(1),
       zero(393100.658211, 5818560.009784, 94.150000),
-      gravity(true)
+      buildings_fly(false),
+      please_redraw(true),
+      do_mirror(false),
+      draw_map(true)
     {
       r_visible = 100e3;
       points_count = 2e6;
@@ -1828,13 +1903,13 @@ class Berlin : public Game {
 
     }
 
-    void gravity_toggle()
+    void toggle_buildings_fly()
     {
-      gravity = !gravity;
+      buildings_fly = !buildings_fly;
       foreach(bez, bezirke) {
         foreach(b, bez->buildings) {
-          b->gravity = gravity;
-          if (!gravity) {
+          b->buildings_fly = buildings_fly;
+          if (buildings_fly) {
             b->pos = 0;
             b->ori.clear_nzny();
             b->m.v = Pt(0, 0, 5) * frandom();
@@ -1846,6 +1921,7 @@ class Berlin : public Game {
           }
         }
       }
+      please_redraw = true;
     }
 
     void add(const DwellingData &d)
@@ -1906,7 +1982,7 @@ class Berlin : public Game {
       //cam.backdrop.texture = gl_textures->load("backdrop_stone.jpg");
       //cam.backdrop.texture = gl_textures->load("backdrop_western.jpg");
       cam.backdrop.texture.try_preload(*gl_textures, "backdrop.jpg");
-      cam.backdrop.scale = 2e3;
+      cam.backdrop.scale = 50e3;
 
       if (cam.backdrop.texture.path)
         cam.backdrop.color_scheme(Pt(1), 0);
@@ -1933,6 +2009,9 @@ class Berlin : public Game {
 
     virtual void step()
     {
+      if (gl_textures->do_pending_loads())
+        please_redraw = true;
+
       Game::step();
 
       move_forward.step();
@@ -1940,12 +2019,20 @@ class Berlin : public Game {
       move_sideways.step();
       roll_z.step();
       cam_nod.step();
+      move_map.step();
 
       Pt z(0, 0, 1);
       pos +=
         ori.nose.without(z) * move_forward
         + z * (move_up * max(1.,fabs(pos.z)))
         + ori.right() * move_sideways;
+
+      if (fabs(move_map) > 1e-3) {
+        map.pos += Pt(0, 0, move_map);
+        please_redraw = true;
+      }
+
+      luftlinie.step(pos - (z));
 
       ori.rotate(0, -roll_z, 0);
       ori.check_normals();
@@ -1961,12 +2048,14 @@ class Berlin : public Game {
         bez->check_textures(X, 200);
       }
 
-      no_redraw_needed = gravity
+      no_redraw_needed = (!buildings_fly)
+        && (! please_redraw)
         && (fabs(move_forward) < 1e-6)
         && (fabs(move_sideways) < 1e-6)
         && (fabs(move_up) < 1e-6)
         && (fabs(cam_nod) < 1e-6)
         && (fabs(roll_z) < 1e-6);
+      please_redraw = false;
     }
 
     virtual void draw_scene()
@@ -1978,15 +2067,20 @@ class Berlin : public Game {
       Game::draw_scene();
 
       Pt unscaled_pos = pos.unscaled(scale).without(Pt(0, 0, 1));
-      double max_dist = 100 / scale.x;
+      double max_dist = 1000;
+      if (do_mirror)
+        max_dist /= 2;
 
-      map.draw(unscaled_pos, max_dist);
+      if (draw_map)
+        map.draw(unscaled_pos, max_dist);
 
       foreach (b, bezirke) {
-        b->draw(unscaled_pos, max_dist);
+        b->draw(unscaled_pos, max_dist, do_mirror);
       }
 
       glPopMatrix();
+
+      luftlinie.draw();
     }
 
     /* User input */
@@ -2067,18 +2161,23 @@ class Berlin : public Game {
         move_up = down? .1 : 0;
         break;
 
-      case 'g':
+      case 'f':
         if (down)
-          gravity_toggle();
+          toggle_buildings_fly();
+        break;
+
+      case 'g':
+        if (down) {
+          draw_map = !draw_map;
+          please_redraw = true;
+        }
         break;
 
       case SDLK_PAGEUP:
-        map.pos += Pt(0, 0, 1);
-        Pp(map.pos);
+        move_map = down? 1 : 0;
         break;
       case SDLK_PAGEDOWN:
-        map.pos -= Pt(0, 0, 1);
-        Pp(map.pos);
+        move_map = down? -1 : 0;
         break;
 
       default:
@@ -2088,13 +2187,11 @@ class Berlin : public Game {
 
       case '+':
       case '=':
-      case '1':
         if (down)
           points_count ++;
         break;
 
       case '-':
-      case '2':
         points_count --;
         break;
 
@@ -2116,6 +2213,30 @@ class Berlin : public Game {
             bez->check_textures(X, 150);
           }
         }
+
+      case 'm':
+        if (down) {
+          do_mirror = !do_mirror;
+          please_redraw = true;
+        }
+        break;
+
+      case '1':
+        if (down)
+          luftlinie.start(pos);
+        break;
+      case '2':
+        if (down)
+          luftlinie.add(pos);
+        break;
+      case '3':
+        if (down)
+          luftlinie.end();
+        break;
+      case '4':
+        if (down)
+          luftlinie.clear();
+        break;
       }
    
       zf = pos.z/50;
@@ -2221,7 +2342,6 @@ class Games {
       if (! game().no_redraw_needed)
         game().draw();
       else {
-        dbg("skip\n");
         SDL_Delay(100);
       }
 
@@ -2417,7 +2537,6 @@ int main(int argc, char *argv[])
 
   while (running)
   {
-    textures.do_pending_loads();
     games.run();
     frames_rendered ++;
 

@@ -340,6 +340,12 @@ class Point : public PtGl{
       c.random();
     }
 
+    Point(const Pt &p)
+    {
+      *this = p;
+      c.random();
+    }
+
     void draw(double alpha=1., double greying=0) {
       c.glColor(alpha, greying);
       glVertex3d();

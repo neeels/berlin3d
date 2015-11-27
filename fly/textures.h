@@ -123,7 +123,7 @@ class Textures {
     SDL_sem *bumper;
 
     void textures_thread();
-    void do_pending_loads();
+    int do_pending_loads();
 
   private:
     unsigned int tail;
