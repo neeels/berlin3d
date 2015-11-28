@@ -20,6 +20,7 @@ current resolution:
     make
     cd ../fly
     make
+    # ln -s ~/some.jpg ./backdrop.jpg
     ./run_fly.sh
 
 Obviously, quite a lot can be improved here...
