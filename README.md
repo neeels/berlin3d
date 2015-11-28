@@ -34,6 +34,7 @@ Current keyboard controls:
     2: line waypoint
     3: end line
     4: clear line
+    PgUp,PgDown: move ground up,down
     G: toggle ground
     F: toggle buildings fly
     Esc: quit
