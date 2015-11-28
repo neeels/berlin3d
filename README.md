@@ -23,6 +23,7 @@ current resolution:
     ./run_fly.sh
 
 Obviously, quite a lot can be improved here...
+- drop building duplications
 - combined make strucure
 - docs
 - vertex arrays
