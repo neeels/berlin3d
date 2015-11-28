@@ -3,6 +3,8 @@
 This code is the result of me playing with the Berlin 3D data published at
 http://www.businesslocationcenter.de/downloadportal
 
+Screenshot: http://kleinekatze.de/laime6Fu/screenshot.jpg
+
 It may be full of unused code, suboptimal implementations and rough edges, but
 it's fun to experiment with. Tested only on GNU/Linux so far.
 
