@@ -892,7 +892,7 @@ class Backdrop : public Visible {
         }
       }
 
-      texture.try_preload(*gl_textures, "backdrop.jpg");
+      //texture.try_preload(*gl_textures, "backdrop.jpg");
 
       //texture = gl_textures->load("backdrop.jpg");
       //texture = gl_textures->load("test_backdrop.png");
@@ -1579,8 +1579,12 @@ class Bezirk {
       }
 
       foreach (b, buildings) {
-        if ((b->b->pos - around).len() <= dist)
+        Pt p = b->b->pos + b->pos;
+        if ((p - around).len() <= dist) {
+        //Pp(b->b->pos);
+        //Pp(p);
           b->textures_want_loaded();
+        }
         else
           b->textures_unload();
       }
@@ -1900,7 +1904,6 @@ class Berlin : public Game {
 
       map.setup(zero, "../satbild/jpgs");
       map.pos.set(-4.286817,-0.058354,35.000000);
-
     }
 
     void toggle_buildings_fly()
@@ -1984,10 +1987,15 @@ class Berlin : public Game {
       cam.backdrop.texture.try_preload(*gl_textures, "backdrop.jpg");
       cam.backdrop.scale = 50e3;
 
+      cam.backdrop.ori.nose.set(0, 1, 0);
+      cam.backdrop.ori.top.set(0, 0, 1);
+
       if (cam.backdrop.texture.path)
         cam.backdrop.color_scheme(Pt(1), 0);
       else
         cam.backdrop.color_scheme(Pt(0x7f, 0xbf, 0xff)/2550);
+
+
     }
 
 
@@ -2044,8 +2052,12 @@ class Berlin : public Game {
       cam.look(pos, cam_dir, ori.top);
 
       Pt X = pos.unscaled(scale);
+      double max_dist = 200. / (do_mirror? 1.5:1.);
+
+      X += ori.nose * (max_dist / 2.);
+
       foreach (bez, bezirke) {
-        bez->check_textures(X, 200);
+        bez->check_textures(X, max_dist);
       }
 
       no_redraw_needed = (!buildings_fly)
@@ -2070,6 +2082,8 @@ class Berlin : public Game {
       double max_dist = 1000;
       if (do_mirror)
         max_dist /= 2;
+
+      unscaled_pos += ori.nose * (max_dist / 3);
 
       if (draw_map)
         map.draw(unscaled_pos, max_dist);
@@ -2148,10 +2162,12 @@ class Berlin : public Game {
 
       case SDLK_LEFT:
         roll_z = down? -.15 : 0;
+        roll_z.slew = down? .85 : .75;
         break;
 
       case SDLK_RIGHT:
         roll_z = down? .15 : 0;
+        roll_z.slew = down? .85 : .75;
         break;
 
       case 'e':
