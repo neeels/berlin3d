@@ -1,0 +1,11 @@
+buildings/src-citygml/
+buildings/src-names/
+buildings/test_cpp_sections
+satbild/ERDAS-ECW_JPEG_2000_SDK-5.2.1/
+satbild/ecw2raw
+satbild/erdas-sdk
+satbild/src-ecw/
+satbild/jpgs/
+.*.sw?
+*.pyc
+*.o
