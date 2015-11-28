@@ -23,6 +23,19 @@ current resolution:
     # ln -s ~/some.jpg ./backdrop.jpg
     ./run_fly.sh
 
+Current keyboard controls:
+
+    W,A,S,D: move forward, left, backward, right
+    Q,E: move up, down
+    arrows: look around
+    1: start line
+    2: line waypoint
+    3: end line
+    4: clear line
+    G: toggle ground
+    F: toggle buildings fly
+    Esc: quit
+
 Obviously, quite a lot can be improved here...
 - drop building duplications
 - combined make strucure
