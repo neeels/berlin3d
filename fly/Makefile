@@ -16,5 +16,8 @@ fly: fly.cpp textures.o draw.h $(INC)/foreach.h $(INC)/pt.h $(berlin_objs)
 %.o: %.cpp %.h
 	g++ $F -c $< 
 
+clean:
+	rm textures.o fly
+
 # vim: noexpandtab
 
