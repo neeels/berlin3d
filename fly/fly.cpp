@@ -1910,6 +1910,7 @@ class Berlin : public Game {
     void toggle_buildings_fly()
     {
       buildings_fly = !buildings_fly;
+      do_mirror = buildings_fly;
       foreach(bez, bezirke) {
         foreach(b, bez->buildings) {
           b->buildings_fly = buildings_fly;
@@ -1962,7 +1963,7 @@ class Berlin : public Game {
       pos.set(0, 0, 50);
       ori.nose.set(0, 1, 0);
       ori.top.set(0, 0, 1);
-      cam_angle = -1.5;
+      cam_angle = -0;
 
       //map.ori.clear();
       /* xberg.png 
@@ -2100,10 +2101,28 @@ class Berlin : public Game {
 
     /* User input */
 
+    virtual void on_joy_button(int button, bool down)
+    {
+      switch (button) {
+      case 5:
+        move_map = down? 1 : 0;
+        break;
+      case 4:
+        move_map = down? -1 : 0;
+        break;
+      default:
+        printf("button %d %s\n", button, down? "down" : "up");
+        if (down)
+          toggle_buildings_fly();
+        break;
+      }
+    }
+
     virtual void on_joy_axis(int axis, double axis_val)
     {
       double v;
       double f = 10;
+      double zf = max(.2, pos.z/100);
 
       switch(axis)
       {
@@ -2112,15 +2131,27 @@ class Berlin : public Game {
         break;
 
       case 0:
-        move_sideways = f*(axis_val*axis_val*axis_val);
-        break;
-
-      case 1:
-        move_forward = -f*(axis_val*axis_val*axis_val);
+        v = axis_val;
+        move_sideways = f*(v*v*v) * zf;
         break;
 
       case 4:
-        move_up = (axis_val*axis_val*axis_val)/5;
+        cam_nod = -.1 * (axis_val * axis_val * axis_val);
+        break;
+
+      case 1:
+        v = axis_val;
+        move_forward = -f*(v*v*v) * zf;
+        break;
+
+      case 5:
+        v = 0.5 + 0.5 * axis_val;
+        move_up = (v * v * v)/5;
+        break;
+
+      case 2:
+        v = 0.5 + 0.5 * axis_val;
+        move_up = -(v * v * v)/5;
         break;
 
       case 3:
@@ -2609,18 +2640,6 @@ int main(int argc, char *argv[])
           break;
 
 
-        case SDL_JOYBUTTONDOWN:
-          if (event.jbutton.button == 4) {
-            games.prev_game();
-            break;
-          }
-          if (event.jbutton.button == 5) {
-            games.next_game();
-          }
-          if (event.jbutton.button == 7) {
-            games.game().init();
-            games.game().play();
-          }
         case SDL_JOYBUTTONUP:
           games.game().on_joy_button(event.jbutton.button,
                                      event.type == SDL_JOYBUTTONDOWN);
