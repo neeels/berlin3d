@@ -2622,14 +2622,8 @@ int main(int argc, char *argv[])
 
           switch (event.jhat.value) {
           case 1:
-            games.game().level ++;
-            games.game().init();
-            games.game().play();
             break;
           case 4:
-            games.game().level --;
-            games.game().init();
-            games.game().play();
             break;
           }
           break;
