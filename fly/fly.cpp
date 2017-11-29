@@ -1,5 +1,5 @@
-int W = 800;
-int H = 500;//1200;
+int W = 1024;
+int H = 768;
 
 #include <stdlib.h>
 #include <time.h>
