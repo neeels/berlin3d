@@ -2634,6 +2634,12 @@ int main(int argc, char *argv[])
           break;
 
 
+        case SDL_JOYBUTTONDOWN:
+          if (event.jbutton.button == 7) {
+            running = false;
+            break;
+          }
+          /* fall thru */
         case SDL_JOYBUTTONUP:
           games.game().on_joy_button(event.jbutton.button,
                                      event.type == SDL_JOYBUTTONDOWN);
