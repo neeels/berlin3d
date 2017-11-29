@@ -20,7 +20,7 @@ void Texture::commit(Textures &textures)
     try_preload(textures);
   }
   else
-    if ((! _want_loaded) && l)
+    if ((! _want_loaded) && l && !load_failed)
       unload();
 }
 
@@ -38,10 +38,7 @@ void Texture::try_preload(Textures &textures)
     return;
   }
   _loaded->taken = this;
-  if (! preload(textures, false)) {
-    _want_loaded = false;
-    unload();
-  }
+  preload(textures, false);
 }
 
 
@@ -54,6 +51,7 @@ bool Texture::preload(Textures &textures, bool use_mip_map)
   picture_surface = IMG_Load(path);
   if (picture_surface == NULL) {
     printf("Failed to load %s\n", path);
+    load_failed = true;
     return false;
   }
 

@@ -25,13 +25,15 @@ class Texture {
   public:
     const char *path;
     TextureSlot *_loaded;
+    bool load_failed;
 
     int native_w, native_h;
 
     Texture() :
       path(NULL),
       _want_loaded(false),
-      _loaded(NULL)
+      _loaded(NULL),
+      load_failed(false)
     {}
 
     void begin()
@@ -70,17 +72,18 @@ class Texture {
       }
       native_w = native_h = -1;
       _want_loaded = false;
+			load_failed = false;
     }
 
 
     bool loaded_or_loading() const
     {
-      return _loaded && (_loaded->taken == this);
+      return load_failed || (_loaded && (_loaded->taken == this));
     }
 
     bool loaded() const
     {
-      return loaded_or_loading() && _loaded->loaded;
+      return loaded_or_loading() && _loaded && _loaded->loaded;
     }
 
     void want_loaded(Textures &textures);
