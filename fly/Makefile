@@ -1,3 +1,4 @@
+default: fly
 
 run: fly
 	./run_fly.sh
@@ -6,7 +7,7 @@ run: fly
 INC = ../include
 INC_SECTIONS = ../buildings/cpp-sections
 
-F = -g -std=c++11 -mcmodel=medium -I$(INC) -I$(INC_SECTIONS) 
+F = -O2 -g -std=c++11 -mcmodel=medium -I$(INC) -I$(INC_SECTIONS)
 
 berlin_objs = ../buildings/cpp-sections/*.o
 
@@ -17,7 +18,7 @@ fly: fly.cpp textures.o draw.h $(INC)/foreach.h $(INC)/pt.h $(berlin_objs)
 	g++ $F -c $< 
 
 clean:
-	rm textures.o fly
+	rm -f textures.o fly
 
 # vim: noexpandtab
 
