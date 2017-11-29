@@ -27,6 +27,7 @@ int H = 500;//1200;
 static AsQuads as_quads;
 static AsLines as_lines;
 
+SDL_Window *window = NULL;
 
 bool running = true;
 volatile int frames_rendered = 0;
@@ -1434,7 +1435,7 @@ class Game {
       glDisable(GL_LIGHTING);
       osd_draw();
       glFlush();
-      SDL_GL_SwapBuffers();
+      SDL_GL_SwapWindow(window);
     }
 
     void collide() {
@@ -2012,7 +2013,7 @@ class Berlin : public Game {
         */
 
       running = true;
-      SDL_CreateThread(berlin_texture_thread, this);
+      SDL_CreateThread(berlin_texture_thread, "texture", this);
     }
 
     virtual void step()
@@ -2370,10 +2371,6 @@ class Games {
 
 };
 
-//char *audio_path = NULL;
-
-SDL_Surface *screen = NULL;
-
 
 typedef struct {
   int random_seed;
@@ -2386,6 +2383,7 @@ int main(int argc, char *argv[])
 {
   bool usage = false;
   bool error = false;
+  bool fullscreen = false;
 
   int c;
 
@@ -2394,7 +2392,7 @@ int main(int argc, char *argv[])
   ip.random_seed = time(NULL);
 
   while (1) {
-    c = getopt(argc, argv, "hf:g:r:"); //A:");
+    c = getopt(argc, argv, "hf:g:r:F"); //A:");
     if (c == -1)
       break;
    
@@ -2417,6 +2415,10 @@ int main(int argc, char *argv[])
             exit(-1);
           }
         }
+        break;
+
+      case 'F':
+        fullscreen = true;
         break;
 
       case 'f':
@@ -2456,6 +2458,7 @@ int main(int argc, char *argv[])
 "\n"
 "  -g WxH   Set window width and height in number of pixels.\n"
 "           Default is '-g %dx%d'.\n"
+"  -F       Start in fullscreen mode.\n"
 "  -f fps   Set desired framerate to <fps> frames per second. The framerate\n"
 "           may slew if your system cannot calculate fast enough.\n"
 "           If zero, run as fast as possible. Default is %.1f.\n"
@@ -2508,7 +2511,7 @@ int main(int argc, char *argv[])
     int i;
     for (i = 0; i < n_joysticks; i++)
     {
-      printf("%2d: '%s'\n", i, SDL_JoystickName(i));
+      printf("%2d: '%s'\n", i, SDL_JoystickNameForIndex(i));
 
       SDL_Joystick *j = SDL_JoystickOpen(i);
       printf("    %d buttons  %d axes  %d balls %d hats\n",
@@ -2522,8 +2525,14 @@ int main(int argc, char *argv[])
   }
 
   atexit(SDL_Quit);
-  SDL_WM_SetCaption("fly", NULL);
-  screen = SDL_SetVideoMode(W,H, 32, SDL_OPENGL);// | SDL_FULLSCREEN);
+  window = SDL_CreateWindow("Fly",
+                            SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                            W, H,
+                            SDL_WINDOW_OPENGL);
+	SDL_GLContext gl_ctx = SDL_GL_CreateContext(window);
+  if (fullscreen)
+    SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+
   SDL_ShowCursor(SDL_DISABLE);
 
   printf("seed %d\n", (int)ip.random_seed);
@@ -2638,7 +2647,11 @@ int main(int argc, char *argv[])
               break;
 
             case 13:
-              SDL_WM_ToggleFullScreen(screen);
+              fullscreen = !fullscreen;
+              if (fullscreen)
+                SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN);
+              else
+                SDL_SetWindowFullscreen(window, 0);
               break;
 
             case SDLK_TAB:

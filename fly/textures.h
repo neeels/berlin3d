@@ -5,7 +5,7 @@
 using namespace std;
 
 #include <GL/gl.h>
-#include <SDL/SDL.h>
+#include <SDL2/SDL.h>
 
 #include <foreach.h>
 #include <list>
